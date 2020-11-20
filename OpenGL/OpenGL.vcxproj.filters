@@ -35,5 +35,13 @@
     <ClInclude Include="shader.fs">
       <Filter>File di origine</Filter>
     </ClInclude>
+    <ClInclude Include="stb_image.h">
+      <Filter>File di origine</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="W:\Users\Ico\Desktop\Minecraft assets\image.jpg">
+      <Filter>File di origine</Filter>
+    </Image>
   </ItemGroup>
 </Project>
