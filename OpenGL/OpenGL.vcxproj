@@ -162,9 +162,6 @@
       <FileType>Document</FileType>
     </ClInclude>
   </ItemGroup>
-  <ItemGroup>
-    <Image Include="W:\Users\Ico\Desktop\Minecraft assets\image.jpg" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
