@@ -4,6 +4,7 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include "shader.h"
+#include "OpenGL.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -71,6 +72,12 @@ int main()
 		"image2.jpg",
 	};
 
+	const unsigned int textureSettings[] =
+	{
+		GL_MIRRORED_REPEAT,	GL_MIRRORED_REPEAT,		//GL_TEXTURE_WRAP_S			GL_TEXTURE_WRAP_T
+		GL_NEAREST,			GL_NEAREST,				//GL_TEXTURE_MIN_FILTER		GL_TEXTURE_MAG_FILTER
+	};
+
 	const unsigned int renderCount = 2;
 
 	unsigned int *VBO,*VAO,*EBO,*textures;
@@ -84,26 +91,8 @@ int main()
 	for (i = 0; i < renderCount; i++)
 	{
 		setupArrays(VBO[i], VAO[i], EBO[i], vertices, indices + (sizeof(indices) / sizeof(unsigned int)) * i, vertexAttribs);
+		setupTextures(textures, textureSettings, textureFiles);
 	}
-
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, texture0);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-	loadTexture("image1.jpg");
-	
-
-	glActiveTexture(GL_TEXTURE1);
-	glBindTexture(GL_TEXTURE_2D, texture1);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-	loadTexture("image2.jpg");
 
 	shader.use();
 
@@ -136,11 +125,10 @@ int main()
 		}
 
 	}
-	glDeleteVertexArrays(1, &VAO);
-	glDeleteBuffers(1, &VBO);
-	glDeleteBuffers(1, &EBO);
-	glDeleteTextures(1, &texture0);
-	glDeleteTextures(1, &texture1);
+	glDeleteVertexArrays(renderCount,VAO);
+	glDeleteBuffers(renderCount,VBO);
+	glDeleteBuffers(renderCount,EBO);
+	glDeleteTextures(renderCount,textures);
 	shader.release();
 
 	glfwTerminate();
@@ -206,4 +194,21 @@ void setupArrays(const unsigned int VBO, const unsigned int VAO, const unsigned 
 		glEnableVertexAttribArray(i);
 		strive += vertexAttribs[i];
 	}
+}
+
+void setupTextures(const unsigned int textures[],const unsigned int textureSettings[],const char* textureFiles[])
+{
+	unsigned int i, count = sizeof(textures) / sizeof(unsigned int);
+
+	for (i = 0; i < count; i++)
+	{
+		glActiveTexture(GL_TEXTURE0 + i);
+		glBindTexture(GL_TEXTURE_2D, textures[i]);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, textureSettings[0]);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, textureSettings[1]);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, textureSettings[2]);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, textureSettings[3]);
+		loadTexture(textureFiles[i]);
+	}
+
 }
