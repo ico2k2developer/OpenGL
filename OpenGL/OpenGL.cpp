@@ -48,42 +48,44 @@ int main()
 
 	Shader shader(VS_FILENAME, FS_FILENAME);
 
-	float vertices[] = {
+	const float vertices[] =
+	{
 		// positions // colors // texture coords
 		-1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, // top right
 		-1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, // bottom right
 		1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, // bottom left
 		1.0f, -1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f // top left
 	};
-	unsigned int indices[] = {
-		0, 1, 3, // first triangle
-		1, 2, 3  // second triangle
+
+	const unsigned int vertexAttribs[] = { 3,3,2 };
+
+	const unsigned int indices[] =
+	{
+		0, 1, 2, // first triangle
+		1, 2, 3, // second triangle
 	};
 
-	unsigned int VBO,VAO,EBO;
-	glGenBuffers(1, &VBO);
-	glGenBuffers(1, &EBO);
-	glGenVertexArrays(1, &VAO);
-	glBindVertexArray(VAO);
+	const char* textureFiles[] =
+	{
+		"image1.jpg",
+		"image2.jpg",
+	};
 
-	glBindBuffer(GL_ARRAY_BUFFER,VBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+	const unsigned int renderCount = 2;
 
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
- 
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(0 * sizeof(float)));
-	glEnableVertexAttribArray(0);
- 
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
-	glEnableVertexAttribArray(1);
- 
-	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
-	glEnableVertexAttribArray(2);
+	unsigned int *VBO,*VAO,*EBO,*textures;
+	unsigned int i;
 
-	unsigned int texture0,texture1;
-	glGenTextures(1, &texture0);
-	glGenTextures(1, &texture1);
+	glGenBuffers(renderCount,VBO);
+	glGenVertexArrays(renderCount,VAO);
+	glGenBuffers(renderCount,EBO);
+	glGenTextures(renderCount,textures);
+
+	for (i = 0; i < renderCount; i++)
+	{
+		setupArrays(VBO[i], VAO[i], EBO[i], vertices, indices + (sizeof(indices) / sizeof(unsigned int)) * i, vertexAttribs);
+	}
+
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, texture0);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
@@ -91,7 +93,17 @@ int main()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
-	loadTexture("image.jpg");
+	loadTexture("image1.jpg");
+	
+
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, texture1);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+	loadTexture("image2.jpg");
 
 	shader.use();
 
@@ -127,7 +139,8 @@ int main()
 	glDeleteVertexArrays(1, &VAO);
 	glDeleteBuffers(1, &VBO);
 	glDeleteBuffers(1, &EBO);
-	glDeleteTextures(1, &texture);
+	glDeleteTextures(1, &texture0);
+	glDeleteTextures(1, &texture1);
 	shader.release();
 
 	glfwTerminate();
@@ -170,4 +183,27 @@ bool loadTexture(const char* filename)
 		printf("Error when loading texture\n");
 	stbi_image_free(data);
 	return result;
+}
+
+void setupArrays(const unsigned int VBO, const unsigned int VAO, const unsigned int EBO, const float vertices[], const unsigned int indices[], const unsigned int vertexAttribs[])
+{
+	glBindVertexArray(VAO);
+
+	glBindBuffer(GL_ARRAY_BUFFER, VBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+	unsigned int i, countRow = 0, countColumns = sizeof(vertexAttribs) / sizeof(unsigned int);
+	for (i = 0; i < countColumns; i++)
+		countRow += vertexAttribs[i];
+
+	unsigned int strive = 0;
+	for (i = 0; i < countColumns; i++)
+	{
+		glVertexAttribPointer(i, vertexAttribs[i], GL_FLOAT, GL_FALSE, countRow * sizeof(float), (void*)(strive * sizeof(float)));
+		glEnableVertexAttribArray(i);
+		strive += vertexAttribs[i];
+	}
 }
