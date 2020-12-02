@@ -49,7 +49,7 @@ int main()
 
 	Shader shader(VS_FILENAME, FS_FILENAME);
 
-	const float vertices[] =
+	const GLfloat vertices[] =
 	{
 		// positions // colors // texture coords
 		-1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, // top right
@@ -58,30 +58,34 @@ int main()
 		1.0f, -1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f // top left
 	};
 
-	const unsigned int vertexAttribs[] = { 3,3,2 };
+	const GLuint vertexAttribs[] = { 3,3,2 };
 
-	const unsigned int indices[] =
+	const GLuint indices[] =
 	{
 		0, 1, 2, // first triangle
 		1, 2, 3, // second triangle
 	};
 
-	const char* textureFiles[] =
+	const GLchar* textureFiles[] =
 	{
 		"image1.jpg",
 		"image2.jpg",
 	};
 
-	const unsigned int textureSettings[] =
+	const GLuint textureSettings[] =
 	{
 		GL_MIRRORED_REPEAT,	GL_MIRRORED_REPEAT,		//GL_TEXTURE_WRAP_S			GL_TEXTURE_WRAP_T
 		GL_NEAREST,			GL_NEAREST,				//GL_TEXTURE_MIN_FILTER		GL_TEXTURE_MAG_FILTER
 	};
 
-	const unsigned int renderCount = 2;
+	const GLuint renderCount = 2;
 
-	unsigned int *VBO,*VAO,*EBO,*textures;
-	unsigned int i;
+	GLuint i,*VBO,*VAO,*EBO,*textures;
+
+	VBO = new GLuint[renderCount];
+	VAO = new GLuint[renderCount];
+	EBO = new GLuint[renderCount];
+	textures = new GLuint[renderCount];
 
 	glGenBuffers(renderCount,VBO);
 	glGenVertexArrays(renderCount,VAO);
@@ -90,20 +94,20 @@ int main()
 
 	for (i = 0; i < renderCount; i++)
 	{
-		setupArrays(VBO[i], VAO[i], EBO[i], vertices, indices + (sizeof(indices) / sizeof(unsigned int)) * i, vertexAttribs);
-		setupTextures(textures, textureSettings, textureFiles);
+		setupArrays(VBO[i], VAO[i], EBO[i], vertices, indices + (sizeof(indices) / sizeof(unsigned int)) * i, vertexAttribs,types);
+		setupTextures(textures, textureSettings, textureFiles,renderCount);
 	}
 
 	shader.use();
 
-	time_t sec = time(NULL), tmp;
-	unsigned short fps = 0;
+	/*time_t sec = time(NULL), tmp;
+	GLuint fps = 0;*/
 	while(!glfwWindowShouldClose(window))
 	{
 		processInput(window);
 
-		/*glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT);*/
+		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT);
 
 
 		// now render the triangle
@@ -114,7 +118,7 @@ int main()
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 
-		fps++;
+		/*fps++;
 
 		tmp = time(NULL);
 		if(tmp != sec)
@@ -122,13 +126,16 @@ int main()
 			sec = tmp;
 			printf("FPS: %d\r", fps);
 			fps = 0;
-		}
+		}*/
 
 	}
 	glDeleteVertexArrays(renderCount,VAO);
 	glDeleteBuffers(renderCount,VBO);
 	glDeleteBuffers(renderCount,EBO);
 	glDeleteTextures(renderCount,textures);
+	delete[] VBO;
+	delete[] VAO;
+	delete[] EBO;
 	shader.release();
 
 	glfwTerminate();
@@ -148,7 +155,7 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 	printf("Resized! %dx%d\n", width, height);
 }
 
-unsigned char* loadImage(const char *filename,int *width,int *height,int *channels)
+unsigned char* loadImage(const GLchar *filename,int *width,int *height,int *channels)
 {
 	unsigned char* result;
 	result = stbi_load(filename,width,height,channels, 0);
@@ -157,11 +164,11 @@ unsigned char* loadImage(const char *filename,int *width,int *height,int *channe
 	return result;
 }
 
-bool loadTexture(const char* filename)
+bool loadTexture(const GLchar* filename)
 {
-	int width, height, channels;
-	bool result;
-	unsigned char* data = loadImage(filename, &width, &height, &channels);
+	int width, height;
+	GLboolean result;
+	unsigned char* data = loadImage(filename, &width, &height,NULL);
 	if (result = (data != NULL))
 	{
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
@@ -173,7 +180,7 @@ bool loadTexture(const char* filename)
 	return result;
 }
 
-void setupArrays(const unsigned int VBO, const unsigned int VAO, const unsigned int EBO, const float vertices[], const unsigned int indices[], const unsigned int vertexAttribs[])
+void setupArrays(const GLuint VBO, const GLuint VAO, const GLuint EBO, const GLfloat vertices[], const GLuint indices[], const GLuint vertexAttribs[])
 {
 	glBindVertexArray(VAO);
 
@@ -183,12 +190,12 @@ void setupArrays(const unsigned int VBO, const unsigned int VAO, const unsigned 
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
-	unsigned int i, countRow = 0, countColumns = sizeof(vertexAttribs) / sizeof(unsigned int);
-	for (i = 0; i < countColumns; i++)
+	GLuint i, countRow = 0,columns = ;
+	for (i = 0; i < columns; i++)
 		countRow += vertexAttribs[i];
 
-	unsigned int strive = 0;
-	for (i = 0; i < countColumns; i++)
+	GLuint strive = 0;
+	for (i = 0; i < columns; i++)
 	{
 		glVertexAttribPointer(i, vertexAttribs[i], GL_FLOAT, GL_FALSE, countRow * sizeof(float), (void*)(strive * sizeof(float)));
 		glEnableVertexAttribArray(i);
@@ -196,9 +203,9 @@ void setupArrays(const unsigned int VBO, const unsigned int VAO, const unsigned 
 	}
 }
 
-void setupTextures(const unsigned int textures[],const unsigned int textureSettings[],const char* textureFiles[])
+void setupTextures(const GLuint textures[],const GLuint textureSettings[],const GLchar* textureFiles[])
 {
-	unsigned int i, count = sizeof(textures) / sizeof(unsigned int);
+	GLuint i;
 
 	for (i = 0; i < count; i++)
 	{
