@@ -52,17 +52,17 @@ int main()
 	const GLfloat vertices[] =
 	{
 		// positions // colors // texture coords
-		-1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, // top right
-		-1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, // bottom right
-		1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, // bottom left
-		1.0f, -1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f // top left
+		0.5f,  0.5f, 0.0f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f, // top right
+		0.5f, -0.5f, 0.0f,   0.0f, 1.0f, 0.0f,   1.0f, 0.0f, // bottom right
+		-0.5f, -0.5f, 0.0f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f, // bottom left
+		-0.5f,  0.5f, 0.0f,   1.0f, 1.0f, 0.0f,   0.0f, 1.0f  // top left 
 	};
 
 	const GLuint vertexAttribs[] = { 3,3,2 };
 
 	const GLuint indices[] =
 	{
-		0, 1, 2, // first triangle
+		0, 1, 3, // first triangle
 		1, 2, 3, // second triangle
 	};
 
@@ -78,27 +78,18 @@ int main()
 		GL_NEAREST,			GL_NEAREST,				//GL_TEXTURE_MIN_FILTER		GL_TEXTURE_MAG_FILTER
 	};
 
-	const GLuint renderCount = 2;
+	const GLuint renderCount = sizeof(textureFiles) / sizeof(GLchar*);
 
-	GLuint i,*VBO,*VAO,*EBO,*textures;
-
-	VBO = new GLuint[renderCount];
-	VAO = new GLuint[renderCount];
-	EBO = new GLuint[renderCount];
-	textures = new GLuint[renderCount];
-
-	glGenBuffers(renderCount,VBO);
-	glGenVertexArrays(renderCount,VAO);
-	glGenBuffers(renderCount,EBO);
-	glGenTextures(renderCount,textures);
-
-	for (i = 0; i < renderCount; i++)
-	{
-		setupArrays(VBO[i], VAO[i], EBO[i], vertices, indices + (sizeof(indices) / sizeof(unsigned int)) * i, vertexAttribs,types);
-		setupTextures(textures, textureSettings, textureFiles,renderCount);
-	}
+	GLuint VBO, VAO, EBO, i;
+	setupArrays(&VBO, &VAO, &EBO, vertices, indices, vertexAttribs, sizeof(vertexAttribs) / sizeof(GLuint));
+	
+	GLuint textures[renderCount] = {};
+	setupTextures(textures, textureSettings, textureFiles, renderCount);
 
 	shader.use();
+
+	shader.setInt("skin0", 0);
+	shader.setInt("skin1", 1);
 
 	/*time_t sec = time(NULL), tmp;
 	GLuint fps = 0;*/
@@ -106,13 +97,15 @@ int main()
 	{
 		processInput(window);
 
-		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+		glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 
+		activateTextures(textures, renderCount);
 
 		// now render the triangle
 		//glBindTexture(GL_TEXTURE_2D, texture);
-		//glBindVertexArray(VAO);
+		shader.use();
+		glBindVertexArray(VAO);
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 		// swap buffers and poll IO events
 		glfwSwapBuffers(window);
@@ -129,13 +122,13 @@ int main()
 		}*/
 
 	}
-	glDeleteVertexArrays(renderCount,VAO);
-	glDeleteBuffers(renderCount,VBO);
-	glDeleteBuffers(renderCount,EBO);
-	glDeleteTextures(renderCount,textures);
-	delete[] VBO;
-	delete[] VAO;
-	delete[] EBO;
+	glDeleteBuffers(renderCount,&VBO);
+	glDeleteVertexArrays(renderCount,&VAO);
+	glDeleteBuffers(renderCount,&EBO);
+	for (i = 0; i < renderCount; i++)
+	{
+		glDeleteTextures(1,&textures[i]);
+	}
 	shader.release();
 
 	glfwTerminate();
@@ -160,37 +153,44 @@ unsigned char* loadImage(const GLchar *filename,int *width,int *height,int *chan
 	unsigned char* result;
 	result = stbi_load(filename,width,height,channels, 0);
 	if(!result)
-		printf("Error when loading image file\n\t%s\n",filename);
+		printf("Error when loading image file %s\n",filename);
+	return result;
+}
+
+bool loadTexture(const GLchar* filename,bool alpha)
+{
+	int width, height;
+	GLboolean result;
+	unsigned char* data = loadImage(filename, &width, &height,NULL);
+	GLuint channels = alpha ? GL_RGBA : GL_RGB;
+	if (result = (data != NULL))
+	{
+		glTexImage2D(GL_TEXTURE_2D, 0, channels, width, height, 0, channels, GL_UNSIGNED_BYTE, data);
+		glGenerateMipmap(GL_TEXTURE_2D);
+	}
+	stbi_image_free(data);
 	return result;
 }
 
 bool loadTexture(const GLchar* filename)
 {
-	int width, height;
-	GLboolean result;
-	unsigned char* data = loadImage(filename, &width, &height,NULL);
-	if (result = (data != NULL))
-	{
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
-		glGenerateMipmap(GL_TEXTURE_2D);
-	}
-	else
-		printf("Error when loading texture\n");
-	stbi_image_free(data);
-	return result;
+	return loadTexture(filename, false);
 }
 
-void setupArrays(const GLuint VBO, const GLuint VAO, const GLuint EBO, const GLfloat vertices[], const GLuint indices[], const GLuint vertexAttribs[])
+GLuint setupArrays(GLuint *VBO, GLuint *VAO, GLuint *EBO, const GLfloat *vertices, const GLuint *indices, const GLuint *vertexAttribs,const GLuint columns)
 {
-	glBindVertexArray(VAO);
+	glGenBuffers(1, VBO);
+	glGenVertexArrays(1, VAO);
+	glGenBuffers(1, EBO);
+	glBindVertexArray(*VAO);
 
-	glBindBuffer(GL_ARRAY_BUFFER, VBO);
+	glBindBuffer(GL_ARRAY_BUFFER, *VBO);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, *EBO);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
-	GLuint i, countRow = 0,columns = ;
+	GLuint i, countRow = 0;
 	for (i = 0; i < columns; i++)
 		countRow += vertexAttribs[i];
 
@@ -201,21 +201,34 @@ void setupArrays(const GLuint VBO, const GLuint VAO, const GLuint EBO, const GLf
 		glEnableVertexAttribArray(i);
 		strive += vertexAttribs[i];
 	}
+	return countRow;
 }
 
-void setupTextures(const GLuint textures[],const GLuint textureSettings[],const GLchar* textureFiles[])
+void setupTextures(GLuint *textures,const GLuint *textureSettings,const GLchar **textureFiles,const GLuint count)
 {
 	GLuint i;
 
 	for (i = 0; i < count; i++)
 	{
-		glActiveTexture(GL_TEXTURE0 + i);
+		glGenTextures(1,&textures[i]);
 		glBindTexture(GL_TEXTURE_2D, textures[i]);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, textureSettings[0]);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, textureSettings[1]);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, textureSettings[2]);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, textureSettings[3]);
-		loadTexture(textureFiles[i]);
+		if (loadTexture(textureFiles[i]))
+			printf("Successfully loaded texture %s\n", textureFiles[i]);
+		else
+			printf("Failed loading texture %s\n", textureFiles[i]);
 	}
+}
 
+void activateTextures(GLuint* textures, const GLuint count)
+{
+	GLuint i;
+	for (i = 0; i < count; i++)
+	{
+		glActiveTexture(GL_TEXTURE0 + i);
+		glBindTexture(GL_TEXTURE_2D, textures[i]);
+	}
 }
