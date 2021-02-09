@@ -29,9 +29,6 @@
     <ClInclude Include="shader.h">
       <Filter>File di origine</Filter>
     </ClInclude>
-    <ClInclude Include="shader.vs">
-      <Filter>File di origine</Filter>
-    </ClInclude>
     <ClInclude Include="shader.fs">
       <Filter>File di origine</Filter>
     </ClInclude>
@@ -39,6 +36,9 @@
       <Filter>File di origine</Filter>
     </ClInclude>
     <ClInclude Include="OpenGL.h">
+      <Filter>File di origine</Filter>
+    </ClInclude>
+    <ClInclude Include="shader.vs">
       <Filter>File di origine</Filter>
     </ClInclude>
   </ItemGroup>
