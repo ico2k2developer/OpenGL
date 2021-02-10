@@ -6,101 +6,104 @@
 shaderp shader_new(const char* vertexPath, const char* fragmentPath,const char* geometryPath)
 {
 	// 1. retrieve the vertex/fragment source code from filePath
-	shader result;
-	char *vShaderCode,*fShaderCode,*gShaderCode;
+	shaderp result = (shaderp)malloc(sizeof(shader));;
+	char *buffer;
 	FILE *vShaderFile,*fShaderFile;
 	GLuint vertex,fragment,geometry = NULL;
-	result.ID = NULL;
-	if (!vertexPath || !fragmentPath)
-		printf("NULL vertex and/or fragment file path\n");
-	else
+	if (result)
 	{
-		fopen_s(&vShaderFile, vertexPath, "r");
-		fopen_s(&fShaderFile, fragmentPath, "r");
-		if (!vShaderFile || !fShaderFile)
-			printf("Invalid vertex and/or fragment file path\n");
+		result->ID = NULL;
+		if (!vertexPath || !fragmentPath)
+			printf("NULL vertex and/or fragment file path\n");
 		else
 		{
-			printf("Successfully loaded vertex and fragment shader files\n");
-			vertex = flen(vShaderFile);
-			vShaderCode = (char*)malloc(sizeof(char) * ((size_t)vertex + 1));
-			if (vShaderCode)
+			fopen_s(&vShaderFile, vertexPath, "r");
+			fopen_s(&fShaderFile, fragmentPath, "r");
+			if (!vShaderFile || !fShaderFile)
+				printf("Invalid vertex and/or fragment file path\n");
+			else
 			{
-				vertex = (GLuint)fread(vShaderCode, sizeof(char), vertex, vShaderFile);
-				vShaderCode[vertex] = NULL;
-			}
-			fclose(vShaderFile);
-
-			printf("\n\nVertex shader code:\n\n\"%s\"\n\n", vShaderCode ? vShaderCode : NULL);
-
-			vertex = glCreateShader(GL_VERTEX_SHADER);
-			glShaderSource(vertex, 1, &vShaderCode, NULL);
-			free(vShaderCode);
-			glCompileShader(vertex);
-			shader_chk_err(vertex, "VERTEX");
-
-			fragment = flen(fShaderFile);
-			fShaderCode = (char*)malloc(sizeof(char) * ((size_t)fragment + 1));
-			if (fShaderCode)
-			{
-				fragment = (GLuint)fread(fShaderCode, sizeof(char), fragment, fShaderFile);
-				fShaderCode[fragment] = NULL;
-			}
-			fclose(fShaderFile);
-
-			printf("\n\nFragment shader code:\n\n\"%s\"\n\n", fShaderCode ? fShaderCode : NULL);
-
-			fragment = glCreateShader(GL_FRAGMENT_SHADER);
-			glShaderSource(fragment, 1, &fShaderCode, NULL);
-			free(fShaderCode);
-			glCompileShader(fragment);
-			shader_chk_err(fragment, "FRAGMENT");
-
-			if (geometryPath)
-			{
-				fopen_s(&vShaderFile, geometryPath, "r");
-				if (vShaderFile)
+				printf("Successfully loaded vertex and fragment shader files\n");
+				vertex = flen(vShaderFile);
+				buffer = (char*)malloc(sizeof(char) * ((size_t)vertex + 1));
+				if (buffer)
 				{
-					printf("Successfully loaded geometry shader file\n");
-					geometry = flen(vShaderFile);
-					gShaderCode = (char*)malloc(sizeof(char) * ((size_t)geometry + 1));
-					if (gShaderCode)
+					vertex = (GLuint)fread(buffer, sizeof(char), vertex, vShaderFile);
+					buffer[vertex] = NULL;
+				}
+				fclose(vShaderFile);
+
+				//printf("\n\Vertex shader code:\n\n\"%s\"\n\n", buffer ? buffer : NULL);
+
+				vertex = glCreateShader(GL_VERTEX_SHADER);
+				glShaderSource(vertex, 1, &buffer, NULL);
+				glCompileShader(vertex);
+				shader_chk_err(vertex, "VERTEX");
+				free(buffer);
+
+				fragment = flen(fShaderFile);
+				buffer = (char*)malloc(sizeof(char) * ((size_t)fragment + 1));
+				if (buffer)
+				{
+					fragment = (GLuint)fread(buffer, sizeof(char), fragment, fShaderFile);
+					buffer[fragment] = NULL;
+				}
+				fclose(fShaderFile);
+
+				//printf("\n\nFragment shader code:\n\n\"%s\"\n\n", buffer ? buffer : NULL);
+
+				fragment = glCreateShader(GL_FRAGMENT_SHADER);
+				glShaderSource(fragment, 1, &buffer, NULL);
+				glCompileShader(fragment);
+				shader_chk_err(fragment, "FRAGMENT");
+				free(buffer);
+
+				if (geometryPath)
+				{
+					fopen_s(&vShaderFile, geometryPath, "r");
+					if (vShaderFile)
 					{
-						geometry = (GLuint)fread(gShaderCode, sizeof(char), geometry, vShaderFile);
-						gShaderCode[geometry] = NULL;
+						printf("Successfully loaded geometry shader file\n");
+						geometry = flen(vShaderFile);
+						buffer = (char*)malloc(sizeof(char) * ((size_t)geometry + 1));
+						if (buffer)
+						{
+							geometry = (GLuint)fread(buffer, sizeof(char), geometry, vShaderFile);
+							buffer[geometry] = NULL;
+						}
+						fclose(vShaderFile);
+
+						//printf("Geometry shader code:\n\n\"%s\"\n\n", buffer ? buffer : NULL);
+
+						geometry = glCreateShader(GL_GEOMETRY_SHADER);
+						glShaderSource(geometry, 1, &buffer, NULL);
+						glCompileShader(geometry);
+						shader_chk_err(geometry, "GEOMETRY");
+						free(buffer);
 					}
-					fclose(vShaderFile);
-
-					printf("Geometry shader code:\n\n\"%s\"\n\n", gShaderCode ? gShaderCode : NULL);
-
-					geometry = glCreateShader(GL_GEOMETRY_SHADER);
-					glShaderSource(geometry, 1, &gShaderCode, NULL);
-					free(gShaderCode);
-					glCompileShader(geometry);
-					shader_chk_err(geometry, "GEOMETRY");
+					else
+						printf("Ignoring geometry shader: invalid file path\n");
 				}
 				else
-					printf("Ignoring geometry shader: invalid file path\n");
-			}
-			else
-				printf("Ignoring geometry shader: NULL path\n");
+					printf("Ignoring geometry shader: NULL file path\n");
 
-			result.ID = glCreateProgram();
-			glAttachShader(result.ID, vertex);
-			glAttachShader(result.ID, fragment);
-			if(geometry)
-				glAttachShader(result.ID, geometry);
-			glLinkProgram(result.ID);
-			shader_chk_err(result.ID, "PROGRAM");
-			glDeleteShader(vertex);
-			glDeleteShader(fragment);
-			if (geometry)
-				glDeleteShader(geometry);
-			printf("Successfully created shader\n");
+				result->ID = glCreateProgram();
+				glAttachShader(result->ID, vertex);
+				glAttachShader(result->ID, fragment);
+				if (geometry)
+					glAttachShader(result->ID, geometry);
+				glLinkProgram(result->ID);
+				shader_chk_err(result->ID, "PROGRAM");
+				glDeleteShader(vertex);
+				glDeleteShader(fragment);
+				if (geometry)
+					glDeleteShader(geometry);
+				printf("Successfully created shader\n");
+			}
 		}
+		printf("Result ID is %d\n", result->ID);
 	}
-	printf("Result ID is %d\n",result.ID);
-	return result.ID == NULL ? NULL : &result;
+	return result;
 }
 
 

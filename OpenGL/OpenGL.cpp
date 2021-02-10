@@ -15,6 +15,9 @@
 #define VS_FILENAME	"shader.vs"
 #define FS_FILENAME	"shader.fs"
 
+#define	TEXTURE0	"image1.jpg"
+#define	TEXTURE1	"image2.jpg"
+
 void processInput(GLFWwindow* window);
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 
@@ -51,8 +54,10 @@ int main()
 		printf("Initialized GLAD\n");
 
 	shaderp s = shader_new(VS_FILENAME, FS_FILENAME);
+	if (!s)
+		printf("Failed to create shader\n");
 
-	GLfloat vertices[] = {
+	const GLfloat vertices[] = {
 		// positions          // colors           // texture coords
 		 0.5f,  0.5f, 0.0f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f, // top right
 		 0.5f, -0.5f, 0.0f,   0.0f, 1.0f, 0.0f,   1.0f, 0.0f, // bottom right
@@ -60,59 +65,39 @@ int main()
 		-0.5f,  0.5f, 0.0f,   1.0f, 1.0f, 0.0f,   0.0f, 1.0f  // top left 
 	};
 
-	GLuint indices[] = {
+	const GLuint vertexAttribs[] = {
+		3, 3, 2,
+	};
+
+	const GLuint indices[] = {
 		0, 1, 3, // first triangle
 		1, 2, 3  // second triangle
 	};
 
-	GLuint VBO, VAO,EBO,texture1,texture2;
-	glGenVertexArrays(1, &VAO);
-	glGenBuffers(1, &VBO);
-	glGenBuffers(1, &EBO);
+	const char* textureFiles[] = {
+		TEXTURE0,
+		TEXTURE1,
+	};
 
-	glBindVertexArray(VAO);
+	const GLuint textureSettings[] =
+	{
+		GL_MIRRORED_REPEAT,	GL_MIRRORED_REPEAT,		//GL_TEXTURE_WRAP_S			GL_TEXTURE_WRAP_T
+		GL_NEAREST,			GL_NEAREST,				//GL_TEXTURE_MIN_FILTER		GL_TEXTURE_MAG_FILTER
+	};
 
-	glBindBuffer(GL_ARRAY_BUFFER, VBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+	const GLboolean textureCount = sizeof(textureFiles) / sizeof(const char*);
 
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+	GLuint VBO, VAO,EBO,*textures;
+	setupArrays(&VBO, &VAO, &EBO,
+		array_new((void*)vertices, sizeof(vertices) / sizeof(GLfloat), NULL),
+		array_new((void*)indices, sizeof(indices) / sizeof(GLuint), NULL),
+		array_new((void*)vertexAttribs, sizeof(vertexAttribs) / sizeof(GLuint), NULL));
 
-	// position attribute
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
-	glEnableVertexAttribArray(0);
-	// color attribute
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
-	glEnableVertexAttribArray(1);
-	// texture coord attribute
-	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
-	glEnableVertexAttribArray(2);
-
-	// ---------
-	glGenTextures(1, &texture1);
-	glBindTexture(GL_TEXTURE_2D, texture1);
-	// set the texture wrapping parameters
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	// set texture wrapping to GL_REPEAT (default wrapping method)
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	// set texture filtering parameters
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-	if (loadTexture("image1.jpg"))
-		printf("Successfully loaded texture 1\n");
-
-	// ---------
-	glGenTextures(1, &texture2);
-	glBindTexture(GL_TEXTURE_2D, texture2);
-	// set the texture wrapping parameters
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	// set texture wrapping to GL_REPEAT (default wrapping method)
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	// set texture filtering parameters
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-	if (loadTexture("image2.png",true))
-		printf("Successfully loaded texture 2\n");
+	textures = (GLuint*)malloc(sizeof(GLuint) * textureCount);
+	if (textures)
+		setupTextures(textures, textureSettings, textureFiles, textureCount);
+	else
+		printf("Textures setup failed\n");
 
 	shader_use(s);
 
@@ -131,10 +116,7 @@ int main()
 		glClear(GL_COLOR_BUFFER_BIT);
 
 		// bind textures on corresponding texture units
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, texture1);
-		glActiveTexture(GL_TEXTURE1);
-		glBindTexture(GL_TEXTURE_2D, texture2);
+		activateTextures(textures, textureCount);
 
 		// render container
 		shader_use(s);
@@ -164,7 +146,6 @@ void processInput(GLFWwindow* window)
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
 		glfwSetWindowShouldClose(window, true);
 }
-
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
@@ -203,6 +184,28 @@ bool loadTexture(const GLchar* filename)
 
 GLuint setupArrays(GLuint* VBO, GLuint* VAO, GLuint* EBO, const arrayp vertices, const arrayp indexes, const arrayp vertexAttribs)
 {
+	/*
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
+    glGenBuffers(1, &EBO);
+
+    glBindVertexArray(VAO);
+
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+    // position attribute
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+    // color attribute
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+    // texture coord attribute
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
+    glEnableVertexAttribArray(2);*/
 	glGenVertexArrays(1, VAO);
 	glGenBuffers(1, VBO);
 	glGenBuffers(1, EBO);
@@ -210,13 +213,15 @@ GLuint setupArrays(GLuint* VBO, GLuint* VAO, GLuint* EBO, const arrayp vertices,
 	glBindVertexArray(*VAO);
 
 	glBindBuffer(GL_ARRAY_BUFFER, *VBO);
-	glBufferData(GL_ARRAY_BUFFER,vertices->size, vertices->a, GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER,vertices->size * sizeof(GLfloat), vertices->a, GL_STATIC_DRAW);
 
 	if (indexes)
 	{
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, *EBO);
-		glBufferData(GL_ELEMENT_ARRAY_BUFFER, indexes->size, indexes->a, GL_STATIC_DRAW);
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, indexes->size * sizeof(GLuint), indexes->a, GL_STATIC_DRAW);
 	}
+	else
+		printf("Ignoring indexes, array is null\n");
 
 	size_t i;
 	GLuint countRow = 0;
