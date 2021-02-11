@@ -15,10 +15,21 @@
 #define VS_FILENAME	"shader.vs"
 #define FS_FILENAME	"shader.fs"
 
-#define	TEXTURE0	"image1.jpg"
-#define	TEXTURE1	"image2.jpg"
+#define	USE_MY_IMAGES
 
-void processInput(GLFWwindow* window);
+#ifdef USE_MY_IMAGES
+#define	TEXTURE0	"Rimage1.jpg"
+#define	TEXTURE1	"Rimage2.jpg"
+#else
+#define	TEXTURE0	"Rcontainer.jpg"
+#define	TEXTURE1	"Aawesomeface.png"
+#endif
+
+#define	NAME_VALUE	"mixValue"
+#define	STEP		0.01f
+
+void processInput(GLFWwindow* window,shaderp s);
+void keyUpDown(shaderp s, bool up);
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 
 int main()
@@ -59,10 +70,10 @@ int main()
 
 	const GLfloat vertices[] = {
 		// positions          // colors           // texture coords
-		 0.5f,  0.5f, 0.0f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f, // top right
-		 0.5f, -0.5f, 0.0f,   0.0f, 1.0f, 0.0f,   1.0f, 0.0f, // bottom right
-		-0.5f, -0.5f, 0.0f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f, // bottom left
-		-0.5f,  0.5f, 0.0f,   1.0f, 1.0f, 0.0f,   0.0f, 1.0f  // top left 
+		 1.0f,  1.0f, 0.0f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f, // top right
+		 1.0f,	-1.0f, 0.0f,   0.0f, 1.0f, 0.0f,   1.0f, 0.0f, // bottom right
+		 -1.0f,	-1.0f, 0.0f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f, // bottom left
+		 -1.0f,  1.0f, 0.0f,   1.0f, 1.0f, 0.0f,   0.0f, 1.0f  // top left 
 	};
 
 	const GLuint vertexAttribs[] = {
@@ -94,6 +105,7 @@ int main()
 		array_new((void*)vertexAttribs, sizeof(vertexAttribs) / sizeof(GLuint), NULL));
 
 	textures = (GLuint*)malloc(sizeof(GLuint) * textureCount);
+	stbi_set_flip_vertically_on_load(true);
 	if (textures)
 		setupTextures(textures, textureSettings, textureFiles, textureCount);
 	else
@@ -108,7 +120,7 @@ int main()
 	// -----------
 	while (!glfwWindowShouldClose(window))
 	{
-		processInput(window);
+		processInput(window,s);
 
 		// render
 		// ------
@@ -141,10 +153,21 @@ int main()
 	return 0;
 }
 
-void processInput(GLFWwindow* window)
+void keyUpDown(shaderp s,bool up)
+{
+	GLfloat f;
+	shader_get_f(s, NAME_VALUE, &f);
+	shader_set_f(s, NAME_VALUE, up ? f + STEP : f - STEP);
+}
+
+void processInput(GLFWwindow* window,shaderp s)
 {
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
 		glfwSetWindowShouldClose(window, true);
+	else if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
+		keyUpDown(s, true);
+	else if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
+		keyUpDown(s, false);
 }
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
@@ -164,10 +187,10 @@ unsigned char* loadImage(const GLchar *filename,int *width,int *height,int *chan
 
 bool loadTexture(const GLchar* filename,bool alpha)
 {
-	int width, height;
+	GLint width, height,channels;
 	GLboolean result;
-	unsigned char* data = loadImage(filename, &width, &height,NULL);
-	GLuint channels = alpha ? GL_RGBA : GL_RGB;
+	unsigned char* data = loadImage(filename, &width, &height,&channels);
+	channels = alpha ? GL_RGBA : GL_RGB;
 	if (result = (data != NULL))
 	{
 		glTexImage2D(GL_TEXTURE_2D, 0, channels, width, height, 0, channels, GL_UNSIGNED_BYTE, data);
@@ -184,28 +207,6 @@ bool loadTexture(const GLchar* filename)
 
 GLuint setupArrays(GLuint* VBO, GLuint* VAO, GLuint* EBO, const arrayp vertices, const arrayp indexes, const arrayp vertexAttribs)
 {
-	/*
-    glGenVertexArrays(1, &VAO);
-    glGenBuffers(1, &VBO);
-    glGenBuffers(1, &EBO);
-
-    glBindVertexArray(VAO);
-
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-
-    // position attribute
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-    // color attribute
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
-    glEnableVertexAttribArray(1);
-    // texture coord attribute
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
-    glEnableVertexAttribArray(2);*/
 	glGenVertexArrays(1, VAO);
 	glGenBuffers(1, VBO);
 	glGenBuffers(1, EBO);
@@ -251,10 +252,10 @@ void setupTextures(GLuint *textures,const GLuint *textureSettings,const GLchar *
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, textureSettings[1]);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, textureSettings[2]);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, textureSettings[3]);
-		if (loadTexture(textureFiles[i]))
-			printf("Successfully loaded texture %s\n", textureFiles[i]);
+		if (loadTexture(textureFiles[i] + 1,textureFiles[i][0] == 'A'))
+			printf("Successfully loaded texture %s\n", textureFiles[i] + 1);
 		else
-			printf("Failed loading texture %s\n", textureFiles[i]);
+			printf("Failed loading texture %s\n", textureFiles[i] + 1);
 	}
 }
 

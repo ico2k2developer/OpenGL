@@ -150,37 +150,43 @@ void shader_release(shaderp s)
 	glDeleteProgram(s->ID);
 }
 
-void shader_set_b(shaderp s,const char* name, bool value)
+void shader_set_b(shaderp s,const char* name, GLboolean value)
 {
 	glUniform1i(glGetUniformLocation(s->ID,name), value);
 	printf("Set boolean %s, value %s\n",name,value ? "true" : "false");
 }
 
-void shader_set_i(shaderp s, const char* name, int value)
+void shader_set_i(shaderp s, const char* name, GLint value)
 {
 	glUniform1i(glGetUniformLocation(s->ID,name), value);
 	printf("Set integer %s, value %i\n", name, value);
 }
 
-void shader_set_f(shaderp s,const char* name, float value)
+void shader_set_f(shaderp s,const char* name, GLfloat value)
 {
 	glUniform1f(glGetUniformLocation(s->ID,name), value);
 	printf("Set float %s, value %f\n", name, value);
 }
 
-void shader_set_vec2(shaderp s,const char* name, float x, float y)
+void shader_get_f(shaderp s,const char* name, GLfloat* dest)
+{
+	glGetUniformfv(s->ID,glGetUniformLocation(s->ID, name), dest);
+	printf("Got float %s, value %f\n", name, *dest);
+}
+
+void shader_set_vec2(shaderp s,const char* name, GLfloat x, GLfloat y)
 {
 	glUniform2f(glGetUniformLocation(s->ID,name), x,y);
 	printf("Set vector2 %s, value %f, %f\n", name, x, y);
 }
 
-void shader_set_vec3(shaderp s,const char* name, float x, float y, float z)
+void shader_set_vec3(shaderp s,const char* name, GLfloat x, GLfloat y, GLfloat z)
 {
 	glUniform3f(glGetUniformLocation(s->ID,name), x,y,z);
 	printf("Set vector3 %s, value %f, %f, %f\n", name, x, y, z);
 }
 
-void shader_set_vec4(shaderp s,const char* name, float x, float y, float z, float w)
+void shader_set_vec4(shaderp s,const char* name, GLfloat x, GLfloat y, GLfloat z, GLfloat w)
 {
 	glUniform4f(glGetUniformLocation(s->ID,name), x,y,z,w);
 	printf("Set vector4 %s, value %f, %f, %f, %f\n", name, x, y, z, w);
