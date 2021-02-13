@@ -1,6 +1,11 @@
+#define	DEBUG
+
 #include <stdio.h>
 #include <math.h>
-#include <time.h>
+#include <windows.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include "shader.h"
@@ -12,8 +17,10 @@
 #define	WND_WIDTH	800
 #define	WND_HEIGHT	600
 
-#define VS_FILENAME	"shader.vs"
-#define FS_FILENAME	"shader.fs"
+#define VS_FILENAME	"vertex.gls"
+#define FS_FILENAME	"fragment.gls"
+
+//#define	FPS			10
 
 #define	USE_MY_IMAGES
 
@@ -34,9 +41,41 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 
 int main()
 {
+	const GLfloat vertices[] = {
+		// positions          // colors           // texture coords
+		 1.0f,  1.0f, 0.0f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f, // top right
+		 1.0f,	-1.0f, 0.0f,   0.0f, 1.0f, 0.0f,   1.0f, 0.0f, // bottom right
+		 -1.0f,	-1.0f, 0.0f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f, // bottom left
+		 -1.0f,  1.0f, 0.0f,   1.0f, 1.0f, 0.0f,   0.0f, 1.0f  // top left 
+	};
+
+	const GLuint vertexAttribs[] = {
+		3, 3, 2,
+	};
+
+	const GLuint indices[] = {
+		0, 1, 3, // first triangle
+		1, 2, 3  // second triangle
+	};
+
+	const char* textureFiles[] = {
+		TEXTURE0,
+		TEXTURE1,
+	};
+
+	const GLuint textureSettings[] =
+	{
+		GL_MIRRORED_REPEAT,	GL_MIRRORED_REPEAT,		//GL_TEXTURE_WRAP_S			GL_TEXTURE_WRAP_T
+		GL_NEAREST,			GL_NEAREST,				//GL_TEXTURE_MIN_FILTER		GL_TEXTURE_MAG_FILTER
+	};
+
+	GLuint VBO, VAO,EBO;
+	arrp textures = arr_new(NULL, sizeof(textureFiles), NULL);
+	textures->size /= sizeof(const char*);
+
 	glfwInit();
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR,4);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR,6);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR,3);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR,3);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 	printf("Initialized OpenGL\n");
 
@@ -68,46 +107,14 @@ int main()
 	if (!s)
 		printf("Failed to create shader\n");
 
-	const GLfloat vertices[] = {
-		// positions          // colors           // texture coords
-		 1.0f,  1.0f, 0.0f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f, // top right
-		 1.0f,	-1.0f, 0.0f,   0.0f, 1.0f, 0.0f,   1.0f, 0.0f, // bottom right
-		 -1.0f,	-1.0f, 0.0f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f, // bottom left
-		 -1.0f,  1.0f, 0.0f,   1.0f, 1.0f, 0.0f,   0.0f, 1.0f  // top left 
-	};
-
-	const GLuint vertexAttribs[] = {
-		3, 3, 2,
-	};
-
-	const GLuint indices[] = {
-		0, 1, 3, // first triangle
-		1, 2, 3  // second triangle
-	};
-
-	const char* textureFiles[] = {
-		TEXTURE0,
-		TEXTURE1,
-	};
-
-	const GLuint textureSettings[] =
-	{
-		GL_MIRRORED_REPEAT,	GL_MIRRORED_REPEAT,		//GL_TEXTURE_WRAP_S			GL_TEXTURE_WRAP_T
-		GL_NEAREST,			GL_NEAREST,				//GL_TEXTURE_MIN_FILTER		GL_TEXTURE_MAG_FILTER
-	};
-
-	const GLboolean textureCount = sizeof(textureFiles) / sizeof(const char*);
-
-	GLuint VBO, VAO,EBO,*textures;
 	setupArrays(&VBO, &VAO, &EBO,
 		array_new((void*)vertices, sizeof(vertices) / sizeof(GLfloat), NULL),
 		array_new((void*)indices, sizeof(indices) / sizeof(GLuint), NULL),
 		array_new((void*)vertexAttribs, sizeof(vertexAttribs) / sizeof(GLuint), NULL));
 
-	textures = (GLuint*)malloc(sizeof(GLuint) * textureCount);
 	stbi_set_flip_vertically_on_load(true);
 	if (textures)
-		setupTextures(textures, textureSettings, textureFiles, textureCount);
+		setupTextures(textures, textureSettings, textureFiles);
 	else
 		printf("Textures setup failed\n");
 
@@ -116,36 +123,33 @@ int main()
 	shader_set_i(s,"texture1", 0);
 	shader_set_i(s,"texture2", 1);
 
-	// render loop
-	// -----------
+	#ifdef FPS
+	ULONGLONG t = 0;
+	const GLuint frameT = 1000 / FPS;
+	#endif
+
 	while (!glfwWindowShouldClose(window))
 	{
 		processInput(window,s);
+	#ifdef FPS
+		if (GetTickCount64() - t < frameT)
+			continue;
+		else
+			t = GetTickCount64();
+	#endif
 
-		// render
-		// ------
 		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 
-		// bind textures on corresponding texture units
-		activateTextures(textures, textureCount);
-
-		// render container
+		activateTextures(textures);
 		shader_use(s);
 		glBindVertexArray(VAO);
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-
-		// glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
-		// -------------------------------------------------------------------------------
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 	}
-
-	// optional: de-allocate all resources once they've outlived their purpose:
-	// ------------------------------------------------------------------------
-	glDeleteVertexArrays(1, &VAO);
-	glDeleteBuffers(1, &VBO);
-	//glDeleteBuffers(1, &EBO);
+	deleteArrays(&VBO, &VAO, &EBO);
+	deleteTextures(textures);
 
 	shader_release(s);
 
@@ -168,6 +172,12 @@ void processInput(GLFWwindow* window,shaderp s)
 		keyUpDown(s, true);
 	else if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
 		keyUpDown(s, false);
+	else if (glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS)
+	{
+		GLfloat f;
+		shader_get_f(s, NAME_VALUE, &f);
+		shader_set_f(s, NAME_VALUE, f > 0.5 ? 1.0 : 0.0);
+	}
 }
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
@@ -240,14 +250,20 @@ GLuint setupArrays(GLuint* VBO, GLuint* VAO, GLuint* EBO, const arrayp vertices,
 	return countRow;
 }
 
-void setupTextures(GLuint *textures,const GLuint *textureSettings,const GLchar **textureFiles,const GLuint count)
+void deleteArrays(GLuint* VBO, GLuint* VAO, GLuint* EBO)
+{
+	glDeleteVertexArrays(1,VAO);
+	glDeleteBuffers(1,VBO);
+	glDeleteBuffers(1,EBO);
+}
+
+void setupTextures(const arrayp textures,const GLuint *textureSettings,const GLchar **textureFiles)
 {
 	GLuint i;
-
-	for (i = 0; i < count; i++)
+	for (i = 0; i < textures->size; i++)
 	{
-		glGenTextures(1,&(textures[i]));
-		glBindTexture(GL_TEXTURE_2D, textures[i]);
+		glGenTextures(1,(GLuint*)textures->a + i);
+		glBindTexture(GL_TEXTURE_2D, *((GLuint*)textures->a + i));
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, textureSettings[0]);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, textureSettings[1]);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, textureSettings[2]);
@@ -259,12 +275,17 @@ void setupTextures(GLuint *textures,const GLuint *textureSettings,const GLchar *
 	}
 }
 
-void activateTextures(GLuint* textures, const GLuint count)
+void activateTextures(const arrayp textures)
 {
 	GLuint i;
-	for (i = 0; i < count; i++)
+	for (i = 0; i < textures->size; i++)
 	{
 		glActiveTexture(GL_TEXTURE0 + i);
-		glBindTexture(GL_TEXTURE_2D, textures[i]);
+		glBindTexture(GL_TEXTURE_2D, ((GLuint*)textures->a)[i]);
 	}
+}
+
+void deleteTextures(const arrayp textures)
+{
+	glDeleteTextures(textures->size,(GLuint*)textures->a);
 }

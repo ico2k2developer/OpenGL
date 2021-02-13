@@ -2,6 +2,7 @@
 #define SHADER_H
 
 #include <stdio.h>
+#include <glm/glm.hpp>
 
 typedef struct
 {
@@ -21,5 +22,11 @@ void shader_get_f(shaderp s, const char* name, GLfloat* dest);
 void shader_set_vec2(shaderp s, const char* name, GLfloat x, GLfloat y);
 void shader_set_vec3(shaderp s, const char* name, GLfloat x, GLfloat y, GLfloat z);
 void shader_set_vec4(shaderp s, const char* name, GLfloat x, GLfloat y, GLfloat z, GLfloat w);
+void shader_set_vec2(shaderp s, const char* name, glm::vec2 v);
+void shader_set_vec3(shaderp s, const char* name, glm::vec3 v);
+void shader_set_vec4(shaderp s, const char* name, glm::vec4 v);
+void shader_set_mat2(shaderp s, const char* name, glm::mat2 v);
+void shader_set_mat3(shaderp s, const char* name, glm::mat3 v);
+void shader_set_mat4(shaderp s, const char* name, glm::mat4 v);
 #endif
 
