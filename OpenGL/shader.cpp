@@ -4,6 +4,8 @@
 #include <glm/glm.hpp>
 #include "ico2k2.h"
 
+#define DEBUG
+
 shaderp shader_new(const char* vertexPath, const char* fragmentPath, const char* geometryPath)
 {
 	shaderp result = (shaderp)malloc(sizeof(shader));
@@ -124,8 +126,8 @@ shaderp shader_new(const char* vertexPath, const char* fragmentPath, const char*
 #ifdef DEBUG
 		printf("Result ID is %d\n", result->ID);
 #endif
-	return result;
 	}
+	return result;
 }
 
 shaderp shader_new(const char* vertexPath, const char* fragmentPath)

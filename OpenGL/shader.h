@@ -2,6 +2,7 @@
 #define SHADER_H
 
 #include <stdio.h>
+#include <glad/glad.h>
 #include <glm/glm.hpp>
 
 typedef struct

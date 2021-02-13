@@ -1,5 +1,4 @@
-#define	DEBUG
-
+#include "shader.h"
 #include <stdio.h>
 #include <math.h>
 #include <windows.h>
@@ -8,13 +7,12 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
-#include "shader.h"
 #include "OpenGL.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
-#define	WND_WIDTH	800
+#define	WND_WIDTH	900
 #define	WND_HEIGHT	600
 
 #define VS_FILENAME	"vertex.gls"
@@ -70,7 +68,7 @@ int main()
 	};
 
 	GLuint VBO, VAO,EBO;
-	arrp textures = arr_new(NULL, sizeof(textureFiles),sizeof(const char*), NULL);
+	arrp tmp = NULL;
 
 	glfwInit();
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR,3);
@@ -107,13 +105,15 @@ int main()
 		printf("Failed to create shader\n");
 
 	setupArrays(&VBO, &VAO, &EBO,
-		arr_new((void*)vertices, sizeof(vertices),sizeof(GLfloat), NULL),
-		arr_new((void*)indices, sizeof(indices),sizeof(GLuint), NULL),
-		arr_new((void*)vertexAttribs, sizeof(vertexAttribs),sizeof(GLuint), NULL));
-
+		*arr_snew((void*)vertices, sizeof(vertices),sizeof(GLfloat), &tmp),
+		*arr_snew((void*)indices, sizeof(indices),sizeof(GLuint), &tmp),
+		*arr_snew((void*)vertexAttribs, sizeof(vertexAttribs), sizeof(GLuint), &tmp));
+	arr_snew(NULL, sizeof(textureFiles), sizeof(const char*), &tmp);
+	if (!tmp)
+		return 1;
 	stbi_set_flip_vertically_on_load(true);
-	if (textures)
-		setupTextures(textures, textureSettings, textureFiles);
+	if (tmp)
+		setupTextures(*tmp, textureSettings, textureFiles);
 	else
 		printf("Textures setup failed\n");
 
@@ -124,7 +124,7 @@ int main()
 
 	#ifdef FPS
 	ULONGLONG t = 0;
-	const GLuint frameT = 1000 / FPS;
+	const unsigned short frameT = 1000 / FPS;
 	#endif
 
 	while (!glfwWindowShouldClose(window))
@@ -140,7 +140,7 @@ int main()
 		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 
-		activateTextures(textures);
+		activateTextures(*tmp);
 		shader_use(s);
 		glBindVertexArray(VAO);
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
@@ -148,7 +148,8 @@ int main()
 		glfwPollEvents();
 	}
 	deleteArrays(&VBO, &VAO, &EBO);
-	deleteTextures(textures);
+	deleteTextures(*tmp);
+	arr_del(tmp);
 
 	shader_release(s);
 
@@ -160,6 +161,10 @@ void keyUpDown(shaderp s,bool up)
 {
 	GLfloat f;
 	shader_get_f(s, NAME_VALUE, &f);
+	if (f > 10.0)
+		f = -10.0;
+	else if (f < -10.0)
+		f = 10.0;
 	shader_set_f(s, NAME_VALUE, up ? f + STEP : f - STEP);
 }
 
@@ -175,7 +180,7 @@ void processInput(GLFWwindow* window,shaderp s)
 	{
 		GLfloat f;
 		shader_get_f(s, NAME_VALUE, &f);
-		shader_set_f(s, NAME_VALUE, f > 0.5 ? 1.0 : 0.0);
+		shader_set_f(s, NAME_VALUE,(GLfloat)(f > 0.5 ? 1.0 : 0.0));
 	}
 }
 
@@ -214,7 +219,7 @@ bool loadTexture(const GLchar* filename)
 	return loadTexture(filename, false);
 }
 
-GLuint setupArrays(GLuint* VBO, GLuint* VAO, GLuint* EBO, const arrp vertices, const arrp indexes, const arrp vertexAttribs)
+GLuint setupArrays(GLuint* VBO, GLuint* VAO, GLuint* EBO, arr vertices, arr indexes, arr vertexAttribs)
 {
 	glGenVertexArrays(1, VAO);
 	glGenBuffers(1, VBO);
@@ -223,12 +228,12 @@ GLuint setupArrays(GLuint* VBO, GLuint* VAO, GLuint* EBO, const arrp vertices, c
 	glBindVertexArray(*VAO);
 
 	glBindBuffer(GL_ARRAY_BUFFER, *VBO);
-	glBufferData(GL_ARRAY_BUFFER,arr_size(vertices),arr_arr(vertices), GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER,arr_size(&vertices),arr_arr(&vertices), GL_STATIC_DRAW);
 
-	if (indexes)
+	if (&indexes)
 	{
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, *EBO);
-		glBufferData(GL_ELEMENT_ARRAY_BUFFER,arr_size(indexes),arr_arr(indexes), GL_STATIC_DRAW);
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER,arr_size(&indexes),arr_arr(&indexes), GL_STATIC_DRAW);
 	}
 	else
 		printf("Ignoring indexes, array is null\n");
@@ -236,15 +241,15 @@ GLuint setupArrays(GLuint* VBO, GLuint* VAO, GLuint* EBO, const arrp vertices, c
 	size_t i;
 	GLuint countRow = 0;
 
-	for (i = 0; i < arr_length(vertexAttribs); i++)
-		countRow += ((GLuint*)arr_arr(vertexAttribs))[i];
+	for (i = 0; i < arr_length(&vertexAttribs); i++)
+		countRow += ((GLuint*)arr_arr(&vertexAttribs))[i];
 
 	GLuint strive = 0;
-	for (i = 0; i < arr_length(vertexAttribs); i++)
+	for (i = 0; i < arr_length(&vertexAttribs); i++)
 	{
-		glVertexAttribPointer((GLuint)i, ((GLuint*)vertexAttribs->a)[i], GL_FLOAT, GL_FALSE,(GLsizei)(countRow * sizeof(GLfloat)), (void*)(strive * sizeof(GLfloat)));
+		glVertexAttribPointer((GLuint)i, ((GLuint*)arr_arr(&vertexAttribs))[i], GL_FLOAT, GL_FALSE,(GLsizei)(countRow * sizeof(GLfloat)), (void*)(strive * sizeof(GLfloat)));
 		glEnableVertexAttribArray((GLuint)i);
-		strive += ((GLuint*)vertexAttribs->a)[i];
+		strive += ((GLuint*)arr_arr(&vertexAttribs))[i];
 	}
 	return countRow;
 }
@@ -256,13 +261,13 @@ void deleteArrays(GLuint* VBO, GLuint* VAO, GLuint* EBO)
 	glDeleteBuffers(1,EBO);
 }
 
-void setupTextures(const arrp textures,const GLuint *textureSettings,const GLchar **textureFiles)
+void setupTextures(arr textures,const GLuint *textureSettings,const GLchar **textureFiles)
 {
 	GLuint i;
-	for (i = 0; i < arr_length(textures); i++)
+	for (i = 0; i < arr_length(&textures); i++)
 	{
-		glGenTextures(1,(GLuint*)textures->a + i);
-		glBindTexture(GL_TEXTURE_2D, *((GLuint*)textures->a + i));
+		glGenTextures(1,(GLuint*)(arr_arr(&textures)) + i);
+		glBindTexture(GL_TEXTURE_2D, ((GLuint*)(arr_arr(&textures)))[i]);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, textureSettings[0]);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, textureSettings[1]);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, textureSettings[2]);
@@ -274,17 +279,17 @@ void setupTextures(const arrp textures,const GLuint *textureSettings,const GLcha
 	}
 }
 
-void activateTextures(const arrp textures)
+void activateTextures(arr textures)
 {
 	GLuint i;
-	for (i = 0; i < arr_length(textures); i++)
+	for (i = 0; i < arr_length(&textures); i++)
 	{
 		glActiveTexture(GL_TEXTURE0 + i);
-		glBindTexture(GL_TEXTURE_2D, ((GLuint*)textures->a)[i]);
+		glBindTexture(GL_TEXTURE_2D, ((GLuint*)(arr_arr(&textures)))[i]);
 	}
 }
 
-void deleteTextures(const arrp textures)
+void deleteTextures(arr textures)
 {
-	glDeleteTextures(arr_length(textures),(GLuint*)textures->a);
+	glDeleteTextures((GLsizei)arr_length(&textures),(GLuint*)arr_arr(&textures));
 }
