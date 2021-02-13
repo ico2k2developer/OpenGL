@@ -4,7 +4,8 @@
 unsigned char* loadImage(const GLchar *filename, int *width, int *height, int *channels);
 bool loadTexture(const GLchar *filename,bool alpha);
 bool loadTexture(const GLchar *filename);
-GLuint setupArrays(GLuint* VBO, GLuint* VAO, GLuint* EBO,const arrayp vertices,const arrayp indexes,const arrayp vertexAttribs);
+GLuint setupArrays(GLuint* VBO, GLuint* VAO, GLuint* EBO,const arrp vertices,const arrp indexes,const arrp vertexAttribs);
 void deleteArrays(GLuint* VBO, GLuint* VAO, GLuint* EBO);
-void setupTextures(const arrayp textures, const GLuint *textureSettings, const GLchar **textureFiles);
-void activateTextures(const arrayp textures);
+void setupTextures(const arrp textures, const GLuint *textureSettings, const GLchar **textureFiles);
+void activateTextures(const arrp textures);
+void deleteTextures(const arrp textures);

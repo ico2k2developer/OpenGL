@@ -70,8 +70,7 @@ int main()
 	};
 
 	GLuint VBO, VAO,EBO;
-	arrp textures = arr_new(NULL, sizeof(textureFiles), NULL);
-	textures->size /= sizeof(const char*);
+	arrp textures = arr_new(NULL, sizeof(textureFiles),sizeof(const char*), NULL);
 
 	glfwInit();
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR,3);
@@ -108,9 +107,9 @@ int main()
 		printf("Failed to create shader\n");
 
 	setupArrays(&VBO, &VAO, &EBO,
-		array_new((void*)vertices, sizeof(vertices) / sizeof(GLfloat), NULL),
-		array_new((void*)indices, sizeof(indices) / sizeof(GLuint), NULL),
-		array_new((void*)vertexAttribs, sizeof(vertexAttribs) / sizeof(GLuint), NULL));
+		arr_new((void*)vertices, sizeof(vertices),sizeof(GLfloat), NULL),
+		arr_new((void*)indices, sizeof(indices),sizeof(GLuint), NULL),
+		arr_new((void*)vertexAttribs, sizeof(vertexAttribs),sizeof(GLuint), NULL));
 
 	stbi_set_flip_vertically_on_load(true);
 	if (textures)
@@ -215,7 +214,7 @@ bool loadTexture(const GLchar* filename)
 	return loadTexture(filename, false);
 }
 
-GLuint setupArrays(GLuint* VBO, GLuint* VAO, GLuint* EBO, const arrayp vertices, const arrayp indexes, const arrayp vertexAttribs)
+GLuint setupArrays(GLuint* VBO, GLuint* VAO, GLuint* EBO, const arrp vertices, const arrp indexes, const arrp vertexAttribs)
 {
 	glGenVertexArrays(1, VAO);
 	glGenBuffers(1, VBO);
@@ -224,12 +223,12 @@ GLuint setupArrays(GLuint* VBO, GLuint* VAO, GLuint* EBO, const arrayp vertices,
 	glBindVertexArray(*VAO);
 
 	glBindBuffer(GL_ARRAY_BUFFER, *VBO);
-	glBufferData(GL_ARRAY_BUFFER,vertices->size * sizeof(GLfloat), vertices->a, GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER,arr_size(vertices),arr_arr(vertices), GL_STATIC_DRAW);
 
 	if (indexes)
 	{
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, *EBO);
-		glBufferData(GL_ELEMENT_ARRAY_BUFFER, indexes->size * sizeof(GLuint), indexes->a, GL_STATIC_DRAW);
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER,arr_size(indexes),arr_arr(indexes), GL_STATIC_DRAW);
 	}
 	else
 		printf("Ignoring indexes, array is null\n");
@@ -237,11 +236,11 @@ GLuint setupArrays(GLuint* VBO, GLuint* VAO, GLuint* EBO, const arrayp vertices,
 	size_t i;
 	GLuint countRow = 0;
 
-	for (i = 0; i < vertexAttribs->size; i++)
-		countRow += ((GLuint*)vertexAttribs->a)[i];
+	for (i = 0; i < arr_length(vertexAttribs); i++)
+		countRow += ((GLuint*)arr_arr(vertexAttribs))[i];
 
 	GLuint strive = 0;
-	for (i = 0; i < vertexAttribs->size; i++)
+	for (i = 0; i < arr_length(vertexAttribs); i++)
 	{
 		glVertexAttribPointer((GLuint)i, ((GLuint*)vertexAttribs->a)[i], GL_FLOAT, GL_FALSE,(GLsizei)(countRow * sizeof(GLfloat)), (void*)(strive * sizeof(GLfloat)));
 		glEnableVertexAttribArray((GLuint)i);
@@ -257,10 +256,10 @@ void deleteArrays(GLuint* VBO, GLuint* VAO, GLuint* EBO)
 	glDeleteBuffers(1,EBO);
 }
 
-void setupTextures(const arrayp textures,const GLuint *textureSettings,const GLchar **textureFiles)
+void setupTextures(const arrp textures,const GLuint *textureSettings,const GLchar **textureFiles)
 {
 	GLuint i;
-	for (i = 0; i < textures->size; i++)
+	for (i = 0; i < arr_length(textures); i++)
 	{
 		glGenTextures(1,(GLuint*)textures->a + i);
 		glBindTexture(GL_TEXTURE_2D, *((GLuint*)textures->a + i));
@@ -275,17 +274,17 @@ void setupTextures(const arrayp textures,const GLuint *textureSettings,const GLc
 	}
 }
 
-void activateTextures(const arrayp textures)
+void activateTextures(const arrp textures)
 {
 	GLuint i;
-	for (i = 0; i < textures->size; i++)
+	for (i = 0; i < arr_length(textures); i++)
 	{
 		glActiveTexture(GL_TEXTURE0 + i);
 		glBindTexture(GL_TEXTURE_2D, ((GLuint*)textures->a)[i]);
 	}
 }
 
-void deleteTextures(const arrayp textures)
+void deleteTextures(const arrp textures)
 {
-	glDeleteTextures(textures->size,(GLuint*)textures->a);
+	glDeleteTextures(arr_length(textures),(GLuint*)textures->a);
 }
