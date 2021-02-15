@@ -31,20 +31,19 @@
 #endif
 
 #define	NAME_VALUE	"mixValue"
-#define	STEP		0.01f
+#define	STEP		0.005f
 
-void processInput(GLFWwindow* window,shaderp s);
-void keyUpDown(shaderp s, bool up);
+void processInput(GLFWwindow* window,shaderp s, glm::mat4* transform);
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 
 int main()
 {
 	const GLfloat vertices[] = {
 		// positions          // colors           // texture coords
-		 1.0f,  1.0f, 0.0f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f, // top right
-		 1.0f,	-1.0f, 0.0f,   0.0f, 1.0f, 0.0f,   1.0f, 0.0f, // bottom right
-		 -1.0f,	-1.0f, 0.0f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f, // bottom left
-		 -1.0f,  1.0f, 0.0f,   1.0f, 1.0f, 0.0f,   0.0f, 1.0f  // top left 
+		 0.5f,  0.5f, 0.0f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f, // top right
+		 0.5f,	-0.5f, 0.0f,   0.0f, 1.0f, 0.0f,   1.0f, 0.0f, // bottom right
+		 -0.5f,	-0.5f, 0.0f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f, // bottom left
+		 -0.5f,  0.5f, 0.0f,   1.0f, 1.0f, 0.0f,   0.0f, 1.0f  // top left 
 	};
 
 	const GLuint vertexAttribs[] = {
@@ -122,14 +121,20 @@ int main()
 	shader_set_i(s,"texture1", 0);
 	shader_set_i(s,"texture2", 1);
 
+	glm::mat4 trans = glm::mat4(1.0f);
+
+	shader_set_mat4(s, "transform", trans);
+	//trans = glm::rotate(trans, glm::radians(90.0f), glm::vec3(0.0, 0.0, 1.0));
+	//trans = glm::scale(trans, glm::vec3(0.5, 0.5, 0.5));
+
 	#ifdef FPS
 	ULONGLONG t = 0;
 	const unsigned short frameT = 1000 / FPS;
 	#endif
-
+	GLfloat f = 0;
 	while (!glfwWindowShouldClose(window))
 	{
-		processInput(window,s);
+		processInput(window,s,&trans);
 	#ifdef FPS
 		if (GetTickCount64() - t < frameT)
 			continue;
@@ -139,9 +144,16 @@ int main()
 
 		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
-
 		activateTextures(*tmp);
 		shader_use(s);
+
+
+		shader_set_f(s, NAME_VALUE, f > 0 ? f : -f);
+		if (f >= 1.0)
+			f = -1.0;
+		f += STEP;
+
+
 		glBindVertexArray(VAO);
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 		glfwSwapBuffers(window);
@@ -157,30 +169,54 @@ int main()
 	return 0;
 }
 
-void keyUpDown(shaderp s,bool up)
-{
-	GLfloat f;
-	shader_get_f(s, NAME_VALUE, &f);
-	if (f > 10.0)
-		f = -10.0;
-	else if (f < -10.0)
-		f = 10.0;
-	shader_set_f(s, NAME_VALUE, up ? f + STEP : f - STEP);
-}
-
-void processInput(GLFWwindow* window,shaderp s)
+void processInput(GLFWwindow* window,shaderp s,glm::mat4* transform)
 {
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
 		glfwSetWindowShouldClose(window, true);
+	else if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+	{
+		*transform = glm::translate(*transform, glm::vec3(-STEP, 0.0, 0.0));
+		shader_set_mat4(s, "transform", *transform);
+	}
+	else if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+	{
+		*transform = glm::translate(*transform, glm::vec3(STEP, 0.0, 0.0));
+		shader_set_mat4(s, "transform", *transform);
+	}
+	else if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+	{
+		*transform = glm::translate(*transform, glm::vec3(0.0, STEP, 0.0));
+		shader_set_mat4(s, "transform", *transform);
+	}
+	else if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+	{
+		*transform = glm::translate(*transform, glm::vec3(0.0, -STEP, 0.0));
+		shader_set_mat4(s, "transform", *transform);
+	}
+	else if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
+	{
+		*transform = glm::rotate(*transform, -STEP,glm::vec3(0.0, 0.0, 1.0));
+		shader_set_mat4(s, "transform", *transform);
+	}
+	else if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
+	{
+		*transform = glm::rotate(*transform, STEP, glm::vec3(0.0, 0.0, 1.0));
+		shader_set_mat4(s, "transform", *transform);
+	}
 	else if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
-		keyUpDown(s, true);
+	{
+		*transform = glm::rotate(*transform, STEP, glm::vec3(1.0, 0.0, 0.0));
+		shader_set_mat4(s, "transform", *transform);
+	}
 	else if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
-		keyUpDown(s, false);
+	{
+		*transform = glm::rotate(*transform, -STEP, glm::vec3(1.0, 0.0, 0.0));
+		shader_set_mat4(s, "transform", *transform);
+	}
 	else if (glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS)
 	{
-		GLfloat f;
-		shader_get_f(s, NAME_VALUE, &f);
-		shader_set_f(s, NAME_VALUE,(GLfloat)(f > 0.5 ? 1.0 : 0.0));
+		*transform = glm::mat4(1.0f);
+		shader_set_mat4(s, "transform", *transform);
 	}
 }
 

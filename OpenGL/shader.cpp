@@ -4,7 +4,7 @@
 #include <glm/glm.hpp>
 #include "ico2k2.h"
 
-#define DEBUG
+//#define DEBUG
 
 shaderp shader_new(const char* vertexPath, const char* fragmentPath, const char* geometryPath)
 {
