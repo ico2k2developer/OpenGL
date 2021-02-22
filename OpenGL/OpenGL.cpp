@@ -1,49 +1,16 @@
-#include "shader.h"
-#include <stdio.h>
-#include <math.h>
-#include <windows.h>
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
-#include <glad/glad.h>
-#include <GLFW/glfw3.h>
 #include "OpenGL.h"
 
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
-
-#define	WND_WIDTH	900
-#define	WND_HEIGHT	600
-
-#define VS_FILENAME	"vertex.gls"
-#define FS_FILENAME	"fragment.gls"
-
-//#define	FPS			10
-
-#define	USE_MY_IMAGES
-
-#ifdef USE_MY_IMAGES
-#define	TEXTURE0	"Rimage1.jpg"
-#define	TEXTURE1	"Rimage2.jpg"
-#else
-#define	TEXTURE0	"Rcontainer.jpg"
-#define	TEXTURE1	"Aawesomeface.png"
-#endif
-
-#define	NAME_VALUE	"mixValue"
-#define	STEP		0.005f
-
-void processInput(GLFWwindow* window,shaderp s, glm::mat4* transform);
+void processInput(GLFWwindow* window,shaderp sH, glm::mat4* transform);
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 
 int main()
 {
 	const GLfloat vertices[] = {
-		// positions          // colors           // texture coords
-		 0.5f,  0.5f, 0.0f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f, // top right
-		 0.5f,	-0.5f, 0.0f,   0.0f, 1.0f, 0.0f,   1.0f, 0.0f, // bottom right
-		 -0.5f,	-0.5f, 0.0f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f, // bottom left
-		 -0.5f,  0.5f, 0.0f,   1.0f, 1.0f, 0.0f,   0.0f, 1.0f  // top left 
+		// positions					// colors           // texture coords
+		 POS_VALUE,	 POS_VALUE, 0.0f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f, // top right
+		 POS_VALUE,	-POS_VALUE, 0.0f,	0.0f, 1.0f, 0.0f,   1.0f, 0.0f, // bottom right
+		 -POS_VALUE,-POS_VALUE, 0.0f,	0.0f, 0.0f, 1.0f,   0.0f, 0.0f, // bottom left
+		 -POS_VALUE,POS_VALUE,	0.0f,	1.0f, 1.0f, 0.0f,   0.0f, 1.0f  // top left 
 	};
 
 	const GLuint vertexAttribs[] = {
@@ -56,8 +23,8 @@ int main()
 	};
 
 	const char* textureFiles[] = {
-		TEXTURE0,
-		TEXTURE1,
+		TEXTURE0_FILE,
+		TEXTURE1_FILE,
 	};
 
 	const GLuint textureSettings[] =
@@ -66,20 +33,32 @@ int main()
 		GL_NEAREST,			GL_NEAREST,				//GL_TEXTURE_MIN_FILTER		GL_TEXTURE_MAG_FILTER
 	};
 
-	GLuint VBO, VAO,EBO;
+	FT_Library ft;
+	GLuint VBO, VAO,EBO,tVBO,tVAO;
 	arrp tmp = NULL;
+	chr_ttf* font;
+	GLFWwindow* window;
+	FT_Face face;
+	shaderp s, ts;
+	tVBO = NULL;
+	tVAO = NULL;
 
+	printf("Compiled in %s for %s using %s on %s %s\n%s version\n\n",
+		__LANGUAGE__, __OS__, __COMPILER__, __DATE__, __TIME__, __VERSION__);
+	printf("This project is compiled using and hence requires support for OpenGL %s\n\n", OPENGL_VERSION);
+
+	printf("Log:\n");
 	glfwInit();
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR,3);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR,3);
-	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, OPENGL_MAJOR);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, OPENGL_MINOR);
+	glfwWindowHint(GLFW_OPENGL_PROFILE, OPENGL_PROFILE);
 	printf("Initialized OpenGL\n");
 
 	#ifdef __APPLE__
 		glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 	#endif
 
-	GLFWwindow* window = glfwCreateWindow(WND_WIDTH, WND_HEIGHT, "OpenGL test", NULL, NULL);
+	window = glfwCreateWindow(WND_WIDTH, WND_HEIGHT, "OpenGL test", NULL, NULL);
 	if(window == NULL)
 	{
 		printf("Failed to create GLFW window\n");
@@ -99,9 +78,72 @@ int main()
 	else
 		printf("Initialized GLAD\n");
 
-	shaderp s = shader_new(VS_FILENAME, FS_FILENAME);
+	s = shader_new(VERTEX_FILE, FRAGMENT_FILE);
 	if (!s)
-		printf("Failed to create shader\n");
+		printf("Failed to create main shader\n");
+
+	ts = shader_new(TEXT_VERTEX_FILE, TEXT_FRAGMENT_FILE);
+	if (!s)
+		printf("Failed to create text shader\n");
+
+	shader_use(ts);
+	shader_set_mat4(ts,"projection", glm::ortho(0.0f, static_cast<float>(WND_WIDTH), 0.0f, static_cast<float>(WND_HEIGHT)));
+
+	if (FT_Init_FreeType(&ft))
+		printf("Failed to initialize FreeType Library\n");
+	else
+		printf("Initialized FreeType Library\n");
+
+	if (FT_New_Face(ft,FONT_FILE,0,&face))
+		printf("Failed to load font %s\n", FONT_FILE);
+	else
+		printf("Loaded font %s\n", FONT_FILE);
+
+	FT_Set_Pixel_Sizes(face, 0, 25);
+
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
+	font = (chr_ttf*)malloc(sizeof(chr_ttf) * FONT_COUNT);
+	if (font)
+	{
+		for (VBO = 0; VBO < FONT_COUNT; VBO++)
+		{
+			if (FT_Load_Char(face, VBO + FONT_START, FT_LOAD_RENDER))
+			{
+				(font + VBO)->textureId = NULL;
+				printf("Failed to load char %c from font %s\n", VBO, FONT_NAME);
+			}
+			else
+			{
+				(font + VBO)->sizeX = face->glyph->bitmap.width;
+				(font + VBO)->sizeY = face->glyph->bitmap.rows;
+				(font + VBO)->bearingX = face->glyph->bitmap_left;
+				(font + VBO)->bearingY = face->glyph->bitmap_top;
+				(font + VBO)->advance = (unsigned short)face->glyph->advance.x;
+				glGenTextures(1, &((font + VBO)->textureId));
+				glBindTexture(GL_TEXTURE_2D, (font + VBO)->textureId);
+				glTexImage2D(
+					GL_TEXTURE_2D,
+					0,
+					GL_RED,
+					(font + VBO)->sizeX,
+					(font + VBO)->sizeY,
+					0,
+					GL_RED,
+					GL_UNSIGNED_BYTE,
+					face->glyph->bitmap.buffer
+				);
+
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+			}
+		}
+	}
+
+	FT_Done_Face(face);
+	FT_Done_FreeType(ft);
 
 	setupArrays(&VBO, &VAO, &EBO,
 		*arr_snew((void*)vertices, sizeof(vertices),sizeof(GLfloat), &tmp),
@@ -127,97 +169,103 @@ int main()
 	//trans = glm::rotate(trans, glm::radians(90.0f), glm::vec3(0.0, 0.0, 1.0));
 	//trans = glm::scale(trans, glm::vec3(0.5, 0.5, 0.5));
 
-	#ifdef FPS
-	ULONGLONG t = 0;
-	const unsigned short frameT = 1000 / FPS;
-	#endif
+
+	/*glGenVertexArrays(1, &tVAO);
+	glGenBuffers(1, &tVBO);
+	glBindVertexArray(tVAO);
+	glBindBuffer(GL_ARRAY_BUFFER, tVBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 6 * 4, NULL, GL_DYNAMIC_DRAW);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(float), 0);*/
+
+
+#ifdef FPS
+	TIME_TYPE t = 0;
+	char* fps = (char*)malloc(sizeof(char) * FPS_STRING);
+	unsigned short count = 0;
+#endif
 	GLfloat f = 0;
+#ifndef FRAME_SINGLE
 	while (!glfwWindowShouldClose(window))
 	{
-		processInput(window,s,&trans);
-	#ifdef FPS
-		if (GetTickCount64() - t < frameT)
-			continue;
-		else
-			t = GetTickCount64();
-	#endif
+		processInput(window, s, &trans);
+#endif
 
 		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
+
+		glDisable(GL_CULL_FACE);
+		glDisable(GL_BLEND);
 		activateTextures(*tmp);
-		shader_use(s);
 
 
-		shader_set_f(s, NAME_VALUE, f > 0 ? f : -f);
-		if (f >= 1.0)
-			f = -1.0;
-		f += STEP;
-
+		shader_set_f(s, NAME_VALUE, f > 0 ? (f > 1.0f ? 1.0f : f) : (f > -1.0f ? 0.0f : -f - 1));
+		//printf("f: %f result: %f\r", f, f > 1.0f ? 1.0f : (f > 0 ? f : -f));
+		f = f >= 2.0f ? -2.0f : f + STEP;
 
 		glBindVertexArray(VAO);
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+#ifdef FPS
+		if (fps)
+		{
+			count++;
+			if (TIME_FUN() - t >= 1000)
+			{
+				t = TIME_FUN();
+				sprintf_s(fps, FPS_STRING, "%u FPS", count);
+				count = 0;
+			}
+			renderText(ts, font, fps, &tVAO, &tVBO, 3.0f, 3.0f, glm::vec3(0.5, 0.8f, 0.2f));
+			shader_use(s);
+		}
+#endif
+
 		glfwSwapBuffers(window);
 		glfwPollEvents();
+#ifndef FRAME_SINGLE
 	}
+#endif
 	deleteArrays(&VBO, &VAO, &EBO);
 	deleteTextures(*tmp);
 	arr_del(tmp);
-
+	free(font);
 	shader_release(s);
+	shader_release(ts);
+
+#ifdef	EXIT_WAIT
+	system("pause");
+#endif
 
 	glfwTerminate();
+
 	return 0;
 }
 
-void processInput(GLFWwindow* window,shaderp s,glm::mat4* transform)
+void processInput(GLFWwindow* window,shaderp sh,glm::mat4* transform)
 {
-	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+	GLfloat t1, t2, r1, r2;
+	if (glfwGetKey(window, GLFW_KEY_ESCAPE))
 		glfwSetWindowShouldClose(window, true);
-	else if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-	{
-		*transform = glm::translate(*transform, glm::vec3(-STEP, 0.0, 0.0));
-		shader_set_mat4(s, "transform", *transform);
-	}
-	else if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-	{
-		*transform = glm::translate(*transform, glm::vec3(STEP, 0.0, 0.0));
-		shader_set_mat4(s, "transform", *transform);
-	}
-	else if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-	{
-		*transform = glm::translate(*transform, glm::vec3(0.0, STEP, 0.0));
-		shader_set_mat4(s, "transform", *transform);
-	}
-	else if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-	{
-		*transform = glm::translate(*transform, glm::vec3(0.0, -STEP, 0.0));
-		shader_set_mat4(s, "transform", *transform);
-	}
-	else if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
-	{
-		*transform = glm::rotate(*transform, -STEP,glm::vec3(0.0, 0.0, 1.0));
-		shader_set_mat4(s, "transform", *transform);
-	}
-	else if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
-	{
-		*transform = glm::rotate(*transform, STEP, glm::vec3(0.0, 0.0, 1.0));
-		shader_set_mat4(s, "transform", *transform);
-	}
-	else if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
-	{
-		*transform = glm::rotate(*transform, STEP, glm::vec3(1.0, 0.0, 0.0));
-		shader_set_mat4(s, "transform", *transform);
-	}
-	else if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
-	{
-		*transform = glm::rotate(*transform, -STEP, glm::vec3(1.0, 0.0, 0.0));
-		shader_set_mat4(s, "transform", *transform);
-	}
-	else if (glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS)
+	else if (glfwGetKey(window, GLFW_KEY_ENTER))
 	{
 		*transform = glm::mat4(1.0f);
-		shader_set_mat4(s, "transform", *transform);
 	}
+	else
+	{
+		t1 = glfwGetKey(window, GLFW_KEY_W) ? STEP : (glfwGetKey(window, GLFW_KEY_S) ? -STEP : 0.0f);
+		t2 = glfwGetKey(window, GLFW_KEY_D) ? STEP : (glfwGetKey(window, GLFW_KEY_A) ? -STEP : 0.0f);
+		r1 = glfwGetKey(window, GLFW_KEY_UP) ? STEP : (glfwGetKey(window, GLFW_KEY_DOWN) ? -STEP : 0.0f);
+		r2 = glfwGetKey(window, GLFW_KEY_RIGHT) ? STEP : (glfwGetKey(window, GLFW_KEY_LEFT) ? -STEP : 0.0f);
+		if (t1 || t2)
+			*transform = glm::translate(*transform, glm::vec3(t2, t1, 0.0f));
+		if(r1 || r2)
+			*transform = glm::rotate(*transform,
+				r1 == 0 ? r2 : r1,
+				glm::vec3(r1 == 0 ? 0.0f : 1.0f,0.0f,r2 == 0 ? 0.0f : 1.0f));
+		printf("t1: %f t2: %f r1: %f r2; %f\r",t1,t2,r1,r2);
+	}
+	shader_set_mat4(sh, "transform", *transform);
 }
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
@@ -328,4 +376,93 @@ void activateTextures(arr textures)
 void deleteTextures(arr textures)
 {
 	glDeleteTextures((GLsizei)arr_length(&textures),(GLuint*)arr_arr(&textures));
+}
+
+void renderText(shaderp s, chr_ttf* font,const char* text, GLuint* VAO, GLuint* VBO,GLfloat x, GLfloat y, glm::vec3 colour)
+{
+	size_t size = strlen(text);
+	GLuint i;
+	GLfloat xc, yc, wc, hc;
+	GLfloat vertices[6][4];
+	chr_ttf* c;
+	glEnable(GL_CULL_FACE);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	shader_use(s);
+	shader_set_vec3(s, "textColour", colour);
+#ifdef FRAME_SINGLE
+	printf("Going to print \"%s\", length is %zu\n", text, size);
+#endif
+	if (!(*VAO) || !(*VBO))
+	{
+		glGenVertexArrays(1, VAO);
+		glGenBuffers(1, VBO);
+		glBindVertexArray(*VAO);
+		glBindBuffer(GL_ARRAY_BUFFER, *VBO);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 6 * 4, NULL, GL_DYNAMIC_DRAW);
+		glEnableVertexAttribArray(0);
+		glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(float), 0);
+		printf("Text VAO and/or VBO were NULL, created new\n");
+	}
+	else
+		glBindVertexArray(*VAO);
+	glActiveTexture(GL_TEXTURE0);
+	for (i = 0; i < size; i++)
+	{
+		c = font + (text[i] - ((char)FONT_START));
+#ifdef FRAME_SINGLE
+		printf("Printing char %c, calculated index in font table is %u\t", text[i], text[i] - ((char)FONT_START));
+#endif
+		if (c != font && c->textureId != 0)
+		{
+#ifdef FRAME_SINGLE
+			printf("Character detected\n");
+#endif
+			xc = x + (GLfloat)c->bearingX;
+			yc = y - (GLfloat)(c->sizeY - c->bearingY);
+			wc = (GLfloat)(c->sizeX);
+			hc = (GLfloat)(c->sizeY);
+
+			vertices[0][0] = xc;
+			vertices[0][1] = yc + hc;
+			vertices[0][2] = 0.0f;
+			vertices[0][3] = 0.0f;
+
+			vertices[1][0] = xc;
+			vertices[1][1] = yc;
+			vertices[1][2] = 0.0f;
+			vertices[1][3] = 1.0f;
+
+			vertices[2][0] = xc + wc;
+			vertices[2][1] = yc;
+			vertices[2][2] = 1.0f;
+			vertices[2][3] = 1.0f;
+
+			vertices[3][0] = xc;
+			vertices[3][1] = yc + hc;
+			vertices[3][2] = 0.0f;
+			vertices[3][3] = 0.0f;
+
+			vertices[4][0] = xc + wc;
+			vertices[4][1] = yc;
+			vertices[4][2] = 1.0f;
+			vertices[4][3] = 1.0f;
+
+			vertices[5][0] = xc + wc;
+			vertices[5][1] = yc + hc;
+			vertices[5][2] = 1.0f;
+			vertices[5][3] = 0.0f;
+
+			glBindTexture(GL_TEXTURE_2D, c->textureId);
+			glBindBuffer(GL_ARRAY_BUFFER, *VBO);
+			glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
+			glDrawArrays(GL_TRIANGLES, 0, 6);
+		}
+#ifdef FRAME_SINGLE
+		else
+			printf("%s detected: skipping\n",c == font ? "Space" : "NULL texture");
+#endif
+		// advance cursors for next glyph (advance is 1/64 pixels)
+		x += (c->advance >> 6); // bitshift by 6 (2^6 = 64)
+	}
 }

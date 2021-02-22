@@ -1,10 +1,6 @@
-#include <glad/glad.h>
 #include "shader.h"
-#include <stdlib.h>
-#include <glm/glm.hpp>
-#include "ico2k2.h"
 
-//#define DEBUG
+#define	DEBUG
 
 shaderp shader_new(const char* vertexPath, const char* fragmentPath, const char* geometryPath)
 {
@@ -12,6 +8,8 @@ shaderp shader_new(const char* vertexPath, const char* fragmentPath, const char*
 	char* buffer;
 	FILE* vShaderFile, * fShaderFile;
 	GLuint vertex, fragment, geometry = NULL;
+	unsigned char tmp;
+	size_t size;
 	if (result)
 	{
 		result->ID = NULL;
@@ -24,12 +22,15 @@ shaderp shader_new(const char* vertexPath, const char* fragmentPath, const char*
 #ifdef DEBUG
 				printf("Successfully loaded vertex and fragment shader files\n");
 #endif
+				tmp = (unsigned char)strlen(OPENGL_VERSION_TEXT);
+
 				vertex = flen(vShaderFile);
-				buffer = (char*)malloc(sizeof(char) * ((size_t)vertex + 1));
+				buffer = (char*)malloc(size = sizeof(char) * ((size_t)vertex + tmp + 1));
 				if (buffer)
 				{
-					vertex = (GLuint)fread(buffer, sizeof(char), vertex, vShaderFile);
-					buffer[vertex] = NULL;
+					strcpy_s(buffer, size, OPENGL_VERSION_TEXT);
+					vertex = (GLuint)fread(buffer + tmp, sizeof(char), vertex, vShaderFile);
+					buffer[vertex + tmp] = NULL;
 				}
 				fclose(vShaderFile);
 
@@ -44,11 +45,12 @@ shaderp shader_new(const char* vertexPath, const char* fragmentPath, const char*
 				free(buffer);
 
 				fragment = flen(fShaderFile);
-				buffer = (char*)malloc(sizeof(char) * ((size_t)fragment + 1));
+				buffer = (char*)malloc(size = sizeof(char) * ((size_t)fragment + tmp + 1));
 				if (buffer)
 				{
-					fragment = (GLuint)fread(buffer, sizeof(char), fragment, fShaderFile);
-					buffer[fragment] = NULL;
+					strcpy_s(buffer, size, OPENGL_VERSION_TEXT);
+					fragment = (GLuint)fread(buffer + tmp, sizeof(char), fragment, fShaderFile);
+					buffer[fragment + tmp] = NULL;
 				}
 				fclose(fShaderFile);
 
@@ -71,11 +73,12 @@ shaderp shader_new(const char* vertexPath, const char* fragmentPath, const char*
 						printf("Successfully loaded geometry shader file\n");
 #endif
 						geometry = flen(vShaderFile);
-						buffer = (char*)malloc(sizeof(char) * ((size_t)geometry + 1));
+						buffer = (char*)malloc(size = sizeof(char) * ((size_t)geometry + tmp + 1));
 						if (buffer)
 						{
-							geometry = (GLuint)fread(buffer, sizeof(char), geometry, vShaderFile);
-							buffer[geometry] = NULL;
+							strcpy_s(buffer, size, OPENGL_VERSION_TEXT);
+							geometry = (GLuint)fread(buffer + tmp, sizeof(char), geometry, vShaderFile);
+							buffer[geometry + tmp] = NULL;
 						}
 						fclose(vShaderFile);
 
@@ -94,10 +97,13 @@ shaderp shader_new(const char* vertexPath, const char* fragmentPath, const char*
 						printf("Ignoring geometry shader: invalid file path\n");
 #endif
 				}
-#ifdef DEBUG
 				else
+				{
+					geometry = NULL;
+#ifdef DEBUG
 					printf("Ignoring geometry shader: NULL file path\n");
 #endif
+				}
 
 				result->ID = glCreateProgram();
 				glAttachShader(result->ID, vertex);
@@ -176,7 +182,7 @@ void shader_release(shaderp s)
 void shader_set_b(shaderp s,const char* name, GLboolean value)
 {
 	glUniform1i(glGetUniformLocation(s->ID,name), value);
-#ifdef DEBUG
+#ifdef VERBOSE
 	printf("Set boolean %s, value %s\n",name,value ? "true" : "false");
 #endif
 }
@@ -184,7 +190,7 @@ void shader_set_b(shaderp s,const char* name, GLboolean value)
 void shader_set_i(shaderp s, const char* name, GLint value)
 {
 	glUniform1i(glGetUniformLocation(s->ID,name), value);
-#ifdef DEBUG
+#ifdef VERBOSE
 	printf("Set integer %s, value %i\n", name, value);
 #endif
 }
@@ -192,7 +198,7 @@ void shader_set_i(shaderp s, const char* name, GLint value)
 void shader_set_f(shaderp s,const char* name, GLfloat value)
 {
 	glUniform1f(glGetUniformLocation(s->ID,name), value);
-#ifdef DEBUG
+#ifdef VERBOSE
 	printf("Set float %s, value %f\n", name, value);
 #endif
 }
@@ -200,7 +206,7 @@ void shader_set_f(shaderp s,const char* name, GLfloat value)
 void shader_get_f(shaderp s,const char* name, GLfloat* dest)
 {
 	glGetUniformfv(s->ID,glGetUniformLocation(s->ID, name), dest);
-#ifdef DEBUG
+#ifdef VERBOSE
 	printf("Got float %s, value %f\n", name, *dest);
 #endif
 }
@@ -208,7 +214,7 @@ void shader_get_f(shaderp s,const char* name, GLfloat* dest)
 void shader_set_vec2(shaderp s,const char* name, GLfloat x, GLfloat y)
 {
 	glUniform2f(glGetUniformLocation(s->ID,name), x,y);
-#ifdef DEBUG
+#ifdef VERBOSE
 	printf("Set vector2 %s, value %f, %f\n", name, x, y);
 #endif
 }
@@ -216,7 +222,7 @@ void shader_set_vec2(shaderp s,const char* name, GLfloat x, GLfloat y)
 void shader_set_vec3(shaderp s,const char* name, GLfloat x, GLfloat y, GLfloat z)
 {
 	glUniform3f(glGetUniformLocation(s->ID,name), x,y,z);
-#ifdef DEBUG
+#ifdef VERBOSE
 	printf("Set vector3 %s, value %f, %f, %f\n", name, x, y, z);
 #endif
 }
@@ -224,7 +230,7 @@ void shader_set_vec3(shaderp s,const char* name, GLfloat x, GLfloat y, GLfloat z
 void shader_set_vec4(shaderp s,const char* name, GLfloat x, GLfloat y, GLfloat z, GLfloat w)
 {
 	glUniform4f(glGetUniformLocation(s->ID,name), x,y,z,w);
-#ifdef DEBUG
+#ifdef VERBOSE
 	printf("Set vector4 %s, value %f, %f, %f, %f\n", name, x, y, z, w);
 #endif
 }
@@ -232,7 +238,7 @@ void shader_set_vec4(shaderp s,const char* name, GLfloat x, GLfloat y, GLfloat z
 void shader_set_vec2(shaderp s, const char* name, glm::vec2 v)
 {
 	glUniform2fv(glGetUniformLocation(s->ID, name), 1,&(v[0]));
-#ifdef DEBUG
+#ifdef VERBOSE
 	printf("Set vector2 %s, value %f, %f\n", name, v.x,v.y);
 #endif
 }
@@ -240,7 +246,7 @@ void shader_set_vec2(shaderp s, const char* name, glm::vec2 v)
 void shader_set_vec3(shaderp s, const char* name, glm::vec3 v)
 {
 	glUniform3fv(glGetUniformLocation(s->ID, name), 1, &(v[0]));
-#ifdef DEBUG
+#ifdef VERBOSE
 	printf("Set vector3 %s, value %f, %f, %f\n", name, v.x, v.y, v.z);
 #endif
 }
@@ -248,7 +254,7 @@ void shader_set_vec3(shaderp s, const char* name, glm::vec3 v)
 void shader_set_vec4(shaderp s, const char* name, glm::vec4 v)
 {
 	glUniform4fv(glGetUniformLocation(s->ID, name), 1, &(v[0]));
-#ifdef DEBUG
+#ifdef VERBOSE
 	printf("Set vector4 %s, value %f, %f, %f, %f\n", name, v.x, v.y, v.z, v.w);
 #endif
 }
@@ -256,7 +262,7 @@ void shader_set_vec4(shaderp s, const char* name, glm::vec4 v)
 void shader_set_mat2(shaderp s, const char* name, glm::mat2 v)
 {
 	glUniformMatrix2fv(glGetUniformLocation(s->ID, name), 1, GL_FALSE, &(v[0][0]));
-#ifdef DEBUG
+#ifdef VERBOSE
 	printf("Set mat2 %s, value %i\n", name, (GLuint)v.length);
 #endif
 }
@@ -264,7 +270,7 @@ void shader_set_mat2(shaderp s, const char* name, glm::mat2 v)
 void shader_set_mat3(shaderp s, const char* name, glm::mat3 v)
 {
 	glUniformMatrix3fv(glGetUniformLocation(s->ID, name), 1, GL_FALSE, &(v[0][0]));
-#ifdef DEBUG
+#ifdef VERBOSE
 	printf("Set mat2 %s, value %i\n", name, (GLuint)v.length);
 #endif
 }
@@ -272,7 +278,7 @@ void shader_set_mat3(shaderp s, const char* name, glm::mat3 v)
 void shader_set_mat4(shaderp s, const char* name, glm::mat4 v)
 {
 	glUniformMatrix4fv(glGetUniformLocation(s->ID, name), 1, GL_FALSE, &(v[0][0]));
-#ifdef DEBUG
+#ifdef VERBOSE
 	printf("Set mat2 %s, value %i\n", name, (GLuint)v.length);
 #endif
 }

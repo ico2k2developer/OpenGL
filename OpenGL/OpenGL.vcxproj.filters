@@ -35,12 +35,21 @@
     <ClInclude Include="shader.h">
       <Filter>File di origine</Filter>
     </ClInclude>
+    <ClInclude Include="config.h">
+      <Filter>File di origine</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <Resource Include="vertex.gls">
+    <Resource Include="shader.vert">
       <Filter>File di origine</Filter>
     </Resource>
-    <Resource Include="fragment.gls">
+    <Resource Include="shader.frag">
+      <Filter>File di origine</Filter>
+    </Resource>
+    <Resource Include="res\text.frag">
+      <Filter>File di origine</Filter>
+    </Resource>
+    <Resource Include="res\text.vert">
       <Filter>File di origine</Filter>
     </Resource>
   </ItemGroup>

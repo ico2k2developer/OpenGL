@@ -1,13 +1,27 @@
+#pragma once
 #ifndef SHADER_H
 #define SHADER_H
 
+#include "config.h"
 #include <stdio.h>
-#include <glad/glad.h>
 #include <glm/glm.hpp>
+#include <stdlib.h>
+#include "ico2k2.h"
+
+#define	OPENGL_DEF_MAJOR	3
+#define	OPENGL_DEF_MINOR	3
+#define	OPENGL_DEF_PROFILE	GLFW_OPENGL_CORE_PROFILE
+
+#if defined(OPENGL_MAJOR) && defined(OPENGL_MINOR) && defined(OPENGL_PROFILE)
+#define	OPENGL_VERSION_TEXT	"#version " STR(OPENGL_MAJOR) STR(OPENGL_MINOR) "0 " OPENGL_VERSION_PROF "\n"
+#else
+#define	OPENGL_VERSION_TEXT	"#version " STR(OPENGL_DEF_MAJOR) STR(OPENGL_DEF_MINOR) "0 " OPENGL_PROFILE_TXT(OPENGL_DEF_PROFILE) "\n"
+#pragma message("OPENGL_MAJOR and/or OPENGL_MINOR and/or OPENGL_PROFILE are not defined, using default " OPENGL_VERSION(OPENGL_DEF_MAJOR,OPENGL_DEF_MINOR,OPENGL_DEF_PROFILE)
+#endif
 
 typedef struct
 {
-	unsigned int ID;
+	GLuint ID;
 }shader;
 typedef shader* shaderp;
 
