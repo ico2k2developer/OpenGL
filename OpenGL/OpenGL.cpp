@@ -409,7 +409,7 @@ void renderText(shaderp s, chr_ttf* font,const char* text, GLuint* VAO, GLuint* 
 	glActiveTexture(GL_TEXTURE0);
 	for (i = 0; i < size; i++)
 	{
-		c = font + (text[i] - ((char)FONT_START));
+		c = font + (text[i] - FONT_START);
 #ifdef FRAME_SINGLE
 		printf("Printing char %c, calculated index in font table is %u\t", text[i], text[i] - ((char)FONT_START));
 #endif

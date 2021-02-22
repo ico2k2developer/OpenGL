@@ -1,6 +1,5 @@
 #include "config.h"
 #include "shader.h"
-#include "ico2k2.h"
 #include <stdio.h>
 #include <math.h>
 #include <windows.h>

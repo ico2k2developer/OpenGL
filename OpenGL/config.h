@@ -1,12 +1,13 @@
 #pragma once
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include "ico2k2.h"
 
 #define	OPENGL_CORE		GLFW_OPENGL_CORE_PROFILE
 #define	OPENGL_COMPAT	GLFW_OPENGL_COMPAT_PROFILE
 
-#define	OPENGL_MAJOR	4
-#define	OPENGL_MINOR	6
+#define	OPENGL_MAJOR	3
+#define	OPENGL_MINOR	3
 #define	OPENGL_PROFILE	OPENGL_CORE
 
 #if OPENGL_PROFILE == GLFW_OPENGL_CORE_PROFILE
@@ -41,8 +42,8 @@
 #define TEXT_VERTEX_FILE	RES_FOLDER "\\" "text.vert"
 #define TEXT_FRAGMENT_FILE	RES_FOLDER "\\" "text.frag"
 
-#define	FONT_START		' '
-#define	FONT_END		'~' + 1
+#define	FONT_START		32
+#define	FONT_END		127
 #define	FONT_COUNT		FONT_END - FONT_START
 
 #ifdef _WIN64
