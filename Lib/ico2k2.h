@@ -1,1 +1,1 @@
-G:/Visual Studio projects/ico2k2/ico2k2/ico2k2.h
+G:/Dati/Projects/C/ico2k2/ico2k2/ico2k2.h
