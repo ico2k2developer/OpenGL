@@ -64,13 +64,14 @@ shaderp shader_new(const char* vertexPath, const char* fragmentPath, const char*
 				shader_chk_err(fragment, "FRAGMENT");
 				free(buffer);
 
+#if OPENGL_REAL_MAJOR >= 3 && OPENGL_REAL_MINOR >= 2
 				if (geometryPath)
 				{
 					fopen_s(&vShaderFile, geometryPath, "r");
 					if (vShaderFile)
 					{
 #ifdef DEBUG
-						printf("Successfully loaded geometry shader file\n");
+						printf("\n\nSuccessfully loaded geometry shader file\n");
 #endif
 						geometry = flen(vShaderFile);
 						buffer = (char*)malloc(size = sizeof(char) * ((size_t)geometry + tmp + 1));
@@ -94,22 +95,25 @@ shaderp shader_new(const char* vertexPath, const char* fragmentPath, const char*
 					}
 #ifdef DEBUG
 					else
-						printf("Ignoring geometry shader: invalid file path\n");
+						printf("\n\nIgnoring geometry shader: invalid file path\n");
 #endif
 				}
 				else
 				{
 					geometry = NULL;
 #ifdef DEBUG
-					printf("Ignoring geometry shader: NULL file path\n");
+					printf("\n\nIgnoring geometry shader: NULL file path\n");
 #endif
 				}
+#endif
 
 				result->ID = glCreateProgram();
 				glAttachShader(result->ID, vertex);
 				glAttachShader(result->ID, fragment);
+#if OPENGL_REAL_MAJOR >= 3 && OPENGL_REAL_MINOR >= 2
 				if (geometry)
 					glAttachShader(result->ID, geometry);
+#endif
 				glLinkProgram(result->ID);
 				shader_chk_err(result->ID, "PROGRAM");
 				glDeleteShader(vertex);

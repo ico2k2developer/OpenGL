@@ -18,6 +18,9 @@ typedef struct
 	unsigned short advance;
 }chr_ttf;
 
+void processInput(shaderp sH, glm::mat4* transform);
+void framebuffer_size_callback(GLFWwindow* window, int width, int height);
+void terminate();
 unsigned char* loadImage(const GLchar *filename, int *width, int *height, int *channels);
 bool loadTexture(const GLchar *filename,bool alpha);
 bool loadTexture(const GLchar *filename);

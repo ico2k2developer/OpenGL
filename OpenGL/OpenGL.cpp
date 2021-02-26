@@ -1,7 +1,7 @@
 #include "OpenGL.h"
 
-void processInput(GLFWwindow* window,shaderp sH, glm::mat4* transform);
-void framebuffer_size_callback(GLFWwindow* window, int width, int height);
+GLFWwindow* window;
+short sizeX, sizeY, posX, posY;
 
 int main()
 {
@@ -37,7 +37,6 @@ int main()
 	GLuint VBO, VAO,EBO,tVBO,tVAO;
 	arrp tmp = NULL;
 	chr_ttf* font;
-	GLFWwindow* window;
 	FT_Face face;
 	shaderp s, ts;
 	tVBO = NULL;
@@ -51,28 +50,43 @@ int main()
 	glfwInit();
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, OPENGL_MAJOR);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, OPENGL_MINOR);
+#if	OPENGL_PROFILE != OPENGL_NONE
 	glfwWindowHint(GLFW_OPENGL_PROFILE, OPENGL_PROFILE);
+#endif
 	printf("Initialized OpenGL\n");
 
-	#ifdef __APPLE__
+#ifdef __APPLE__
 		glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-	#endif
+#endif
 
-	window = glfwCreateWindow(WND_WIDTH, WND_HEIGHT, "OpenGL test", NULL, NULL);
-	if(window == NULL)
+
+	const GLFWvidmode* mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
+	window = glfwCreateWindow(mode->width, mode->height, WND_TITLE, NULL, NULL);
+	if(window)
+		printf("Created GLFW window\n");
+	else
 	{
-		printf("Failed to create GLFW window\n");
-		glfwTerminate();
+		const char* error;
+		glfwGetError(&error);
+		printf("Failed to create GLFW window:\n\t%s\n",error);
+		terminate();
 		return -1;
 	}
-	else
-		printf("Created GLFW window\n");
 	glfwMakeContextCurrent(window);
+	glfwSetWindowSize(window, mode->width / 2, mode->height / 2);
+	int tmp1, tmp2;
+	glfwGetWindowPos(window, &tmp1, &tmp2);
+	posX = (short)tmp1;
+	posY = (short)tmp2;
+	glfwGetWindowSize(window, &tmp1, &tmp2);
+	sizeX = (short)tmp1;
+	sizeY = (short)tmp2;
 	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
 	if(!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
 	{
 		printf("Failed to initialize GLAD\n");
+		terminate();
 		return -1;
 	}
 	else
@@ -87,7 +101,7 @@ int main()
 		printf("Failed to create text shader\n");
 
 	shader_use(ts);
-	shader_set_mat4(ts,"projection", glm::ortho(0.0f, static_cast<float>(WND_WIDTH), 0.0f, static_cast<float>(WND_HEIGHT)));
+	shader_set_mat4(ts,"projection", glm::ortho(0.0f, static_cast<float>(mode->width), 0.0f, static_cast<float>(mode->height)));
 
 	if (FT_Init_FreeType(&ft))
 		printf("Failed to initialize FreeType Library\n");
@@ -101,6 +115,7 @@ int main()
 
 	FT_Set_Pixel_Sizes(face, 0, 25);
 
+	glViewport(0, 0, sizeX, sizeY);
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
 	font = (chr_ttf*)malloc(sizeof(chr_ttf) * FONT_COUNT);
@@ -188,7 +203,7 @@ int main()
 #ifndef FRAME_SINGLE
 	while (!glfwWindowShouldClose(window))
 	{
-		processInput(window, s, &trans);
+		processInput(s, &trans);
 #endif
 
 		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
@@ -214,9 +229,10 @@ int main()
 			{
 				t = TIME_FUN();
 				sprintf_s(fps, FPS_STRING, "%u FPS", count);
+				printf("%s\r", fps);
 				count = 0;
 			}
-			renderText(ts, font, fps, &tVAO, &tVBO, 3.0f, 3.0f, glm::vec3(0.5, 0.8f, 0.2f));
+			renderText(ts, font, fps, &tVAO, &tVBO, 0.0f, 0.0f, glm::vec3(0.5, 0.8f, 0.2f));
 			shader_use(s);
 		}
 #endif
@@ -233,20 +249,50 @@ int main()
 	shader_release(s);
 	shader_release(ts);
 
-#ifdef	EXIT_WAIT
-	system("pause");
-#endif
-
-	glfwTerminate();
+	terminate();
 
 	return 0;
 }
 
-void processInput(GLFWwindow* window,shaderp sh,glm::mat4* transform)
+void terminate()
+{
+	glfwTerminate();
+
+#ifdef	EXIT_WAIT
+	system("pause");
+#endif
+}
+
+void processInput(shaderp sh,glm::mat4* transform)
 {
 	GLfloat t1, t2, r1, r2;
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE))
 		glfwSetWindowShouldClose(window, true);
+	else if (glfwGetKey(window, GLFW_KEY_F11))
+	{
+		if (!sizeY)
+		{
+			// get resolution of monitor
+			int tmp1, tmp2;
+			glfwGetWindowPos(window, &tmp1, &tmp2);
+			posX = (short)tmp1;
+			posY = (short)tmp2;
+			glfwGetWindowSize(window, &tmp1, &tmp2);
+			sizeX = (short)tmp1;
+			sizeY = (short)tmp2;
+
+			const GLFWvidmode* mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
+
+			// switch to full screen
+			glfwSetWindowMonitor(window, glfwGetPrimaryMonitor(), 0, 0, mode->width, mode->height, 0);
+		}
+		else
+		{
+			// restore last window size and position
+			glfwSetWindowMonitor(window, NULL, (int)posX, (int)posY, (int)sizeX, (int)sizeY, 0);
+			sizeY = 0;
+		}
+	}
 	else if (glfwGetKey(window, GLFW_KEY_ENTER))
 	{
 		*transform = glm::mat4(1.0f);
@@ -263,7 +309,7 @@ void processInput(GLFWwindow* window,shaderp sh,glm::mat4* transform)
 			*transform = glm::rotate(*transform,
 				r1 == 0 ? r2 : r1,
 				glm::vec3(r1 == 0 ? 0.0f : 1.0f,0.0f,r2 == 0 ? 0.0f : 1.0f));
-		printf("t1: %f t2: %f r1: %f r2; %f\r",t1,t2,r1,r2);
+		//printf("t1: %f t2: %f r1: %f r2; %f\r",t1,t2,r1,r2);
 	}
 	shader_set_mat4(sh, "transform", *transform);
 }
@@ -271,7 +317,7 @@ void processInput(GLFWwindow* window,shaderp sh,glm::mat4* transform)
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
 	glViewport(0, 0, width, height);
-	printf("Resized! %dx%d\n", width, height);
+	printf("Resized! %ix%i\n", width, height);
 }
 
 unsigned char* loadImage(const GLchar *filename,int *width,int *height,int *channels)

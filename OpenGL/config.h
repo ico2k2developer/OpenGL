@@ -3,12 +3,13 @@
 #include <GLFW/glfw3.h>
 #include "ico2k2.h"
 
+#define	OPENGL_NONE		0
 #define	OPENGL_CORE		GLFW_OPENGL_CORE_PROFILE
 #define	OPENGL_COMPAT	GLFW_OPENGL_COMPAT_PROFILE
 
-#define	OPENGL_MAJOR	3
-#define	OPENGL_MINOR	3
-#define	OPENGL_PROFILE	OPENGL_CORE
+#define	OPENGL_MAJOR	4
+#define	OPENGL_MINOR	6
+#define	OPENGL_PROFILE	OPENGL_NONE
 
 #if OPENGL_PROFILE == GLFW_OPENGL_CORE_PROFILE
 #define OPENGL_VERSION_PROF	"core"
@@ -17,17 +18,21 @@
 #endif
 
 #define	OPENGL_VERSION_CODE	STR(OPENGL_MAJOR) "." STR(OPENGL_MINOR)
-#define	OPENGL_VERSION	OPENGL_VERSION_CODE " " OPENGL_VERSION_PROF
 
-#define	WND_WIDTH	900
-#define	WND_HEIGHT	600
+#ifdef OPENGL_VERSION_PROF
+#define	OPENGL_VERSION	OPENGL_VERSION_CODE " " OPENGL_VERSION_PROF
+#else
+#define	OPENGL_VERSION	OPENGL_VERSION_CODE
+#endif
 
 #define	NAME_VALUE	"mixValue"
-#define	STEP		0.005f
-#define	POS_VALUE	0.75f
+#define	STEP		0.0005f
+#define	POS_VALUE	1.0f
 
 #define	FPS
 #define	FPS_STRING	10
+
+#define WND_TITLE	"OpenGL " OPENGL_VERSION " test"
 
 #define	RES_FOLDER	"res"
 
@@ -57,6 +62,8 @@
 #endif
 
 //#define	FRAME_SINGLE
-//#define	EXIT_WAIT
+#ifndef _DEBUG
+#define	EXIT_WAIT
+#endif
 
 #define STB_IMAGE_IMPLEMENTATION
