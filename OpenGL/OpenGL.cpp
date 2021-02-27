@@ -195,9 +195,11 @@ int main()
 
 
 #ifdef FPS
-	TIME_TYPE t = 0;
+	TIME_TYPE frame = TIME_FUN();
+	const GLfloat msTarget = 1000.0f / ((float)FPS_TARGET);
 	char* fps = (char*)malloc(sizeof(char) * FPS_STRING);
-	unsigned short count = 0;
+	if (!fps)
+		return -1;
 #endif
 	GLfloat f = 0;
 #ifndef FRAME_SINGLE
@@ -222,19 +224,22 @@ int main()
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
 #ifdef FPS
-		if (fps)
+		frame = TIME_FUN() - frame;
+		if (frame < msTarget)
 		{
-			count++;
-			if (TIME_FUN() - t >= 1000)
-			{
-				t = TIME_FUN();
-				sprintf_s(fps, FPS_STRING, "%u FPS", count);
-				printf("%s\r", fps);
-				count = 0;
-			}
-			renderText(ts, font, fps, &tVAO, &tVBO, 0.0f, 0.0f, glm::vec3(0.5, 0.8f, 0.2f));
-			shader_use(s);
+			printf("Sleeping for %d ms. ", (unsigned short)(msTarget - ((float)frame)));
+			SLEEP_FUN((unsigned short)(msTarget - ((float)frame)));
 		}
+		if (frame != 0)
+		{
+			sprintf_s(fps, FPS_STRING, "%llu FPS", 1000 / frame);
+		}
+		else
+			sprintf_s(fps, FPS_STRING, "inf FPS");
+		printf("Frame is %d, %s\r", frame, fps);
+		renderText(ts, font, fps, &tVAO, &tVBO, 0.0f, 0.0f, glm::vec3(0.5, 0.8f, 0.2f));
+		shader_use(s);
+		frame = TIME_FUN();
 #endif
 
 		glfwSwapBuffers(window);

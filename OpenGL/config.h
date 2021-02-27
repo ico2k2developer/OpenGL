@@ -30,6 +30,7 @@
 #define	POS_VALUE	1.0f
 
 #define	FPS
+#define	FPS_TARGET	75
 #define	FPS_STRING	10
 
 #define WND_TITLE	"OpenGL " OPENGL_VERSION " test"
@@ -54,9 +55,11 @@
 #ifdef _WIN64
 #define	TIME_FUN	GetTickCount64
 #define	TIME_TYPE	ULONGLONG
+#define	SLEEP_FUN	Sleep
 #elif	_WIN32
 #define	TIME_FUN	GetTickCount
 #define	TIME_TYPE	DWORD
+#define	SLEEP_FUN	Sleep
 #else
 #error	"Non-Windows target: need to define elapsed ms type and method"
 #endif
